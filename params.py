@@ -1,8 +1,35 @@
 import os
 
+# credentials
 
 API_KEY = os.environ['API_KEY']
+USERNAME = os.environ['USERNAME']
+PASSWORD = os.environ['PASSWORD']
 
+# stock selection
+
+# yahoo screener names
+PORTFOLIO_LIST = [
+    'undervalued_growth_stocks',
+    'day_gainers',
+    'day_losers',
+    'most_actives',
+    'growth_technology_stocks',
+    'undervalued_large_caps',
+    'aggressive_small_caps',
+    'portfolio_anchors',
+    'solid_large_growth_funds'
+]
+
+# example of Intrinio conditions
+UNDERVALUED = {
+    'conditions': [
+        ['pricetoearnings', '<=', 20],
+        ['pricetoearnings', '>', 0]
+    ]
+}
+
+# data selection
 
 DATA_OPTIONS_LIST = [{
     'function': 'TIME_SERIES_DAILY',
