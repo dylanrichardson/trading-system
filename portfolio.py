@@ -9,13 +9,13 @@ from params import USERNAME, PASSWORD
 from pyquery import PyQuery as pq
 
 
-def get_portfolio(name):
-    return yahoo(name)
+def get_portfolio(screener):
+    return yahoo(screener)
 
 
 # get data from Yahoo predefined screeners
-def yahoo(name):
-    d = pq(url='https://finance.yahoo.com/screener/predefined/%s' % name)
+def yahoo(screener):
+    d = pq(url='https://finance.yahoo.com/screener/predefined/%s' % screener)
     elements = d("td.Va\\(m\\) > a.Fw\\(b\\)")
     return [ a.text for a in elements ]
 
