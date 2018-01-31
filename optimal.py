@@ -126,5 +126,3 @@ def optimize_trades(prices, tolerance):
                     buying = True
 
     return trades
-
-get_optimal_trades('AAPL', '2018-01-01', '2018-01-30', 0.01)
