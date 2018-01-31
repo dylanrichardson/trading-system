@@ -5,10 +5,14 @@ from urllib.parse import urlencode
 import requests
 import json
 import csv
-import collections
-import itertools
-from hashlib import sha1
-from params import DATA_OPTIONS_LIST, API_KEY
+import datetime
+from utility import *
+from params import PARAMS
+
+
+OPTIONS_LIST = PARAMS['data_options']
+API_KEY = PARAMS['credentials']['alphavantage']
+DATE_LENGTH = 10
 
 
 def request(options):
@@ -43,24 +47,11 @@ def download_list(options_list, symbol):
 
 
 def sanitize_data(data):
-    return { date: sanitize_datum(data[date]) for date in data }
+    return { date[:DATE_LENGTH]: sanitize_datum(data[date]) for date in data }
 
 
 def sanitize_datum(datum):
     return { (key[3:] if key[1:3] == ". " else key): val for key, val in datum.items() }
-
-
-def hash_options(options):
-    return [
-        (column, column + str(sha1(json.dumps({
-            key: val for key, val in options.items() if key is not "columns"
-        }, sort_keys=True).encode('utf8')).hexdigest()))
-        for column in options['columns']
-    ]
-
-
-def hash_options_list(options_list):
-    return [ column for options in options_list for column in hash_options(options) ]
 
 
 def convert_data(options, data):
@@ -88,11 +79,9 @@ def json_to_csv(data, date, headers):
     return [date] + list(map(lambda col: data[date].get(col, ""), headers[1:]))
 
 
-def get_path(symbol, folder=None):
+def get_path(symbol):
     cwd = os.getcwd()
-    folder = folder or os.path.join(cwd, 'data')
-    path = os.path.join(folder, symbol + '.csv')
-    return path
+    return os.path.join(cwd, 'data', 'symbol', symbol + '.csv')
 
 
 def csv_to_json(datum):
@@ -114,21 +103,7 @@ def retrieve_data(path):
         return {}
 
 
-def dict_merge(dct, merge_dct):
-    for k, v in merge_dct.items():
-        if (k in dct and isinstance(dct[k], dict)
-                and isinstance(merge_dct[k], collections.Mapping)):
-            dict_merge(dct[k], merge_dct[k])
-        else:
-            dct[k] = merge_dct[k]
-
-
-def list_subtract(l1, l2):
-    return list(itertools.filterfalse(lambda x: x in l2, l1))
-
-
 def get_columns(data):
-    DATE_LENGTH = 10
     for date in data.keys():
         if len(date) == DATE_LENGTH:
             return list(data[date].keys())
@@ -143,38 +118,64 @@ def column_to_options(column, options_list):
     return {}
 
 
-def filter_data(keep, data):
-    return {
-        date: {
-            column: val
-            for column, val in columns.items() if column in keep
-        } for date, columns in data.items()
-    }
-
-def remove_duplicates(l):
-    return [ i for n, i in enumerate(l) if i not in l[n + 1:] ]
+def get_latest_weekday():
+    today = datetime.date.today()
+    latest_day = today - datetime.timedelta(max(4, today.weekday()) - 4)
+    return latest_day.strftime('%Y-%m-%d')
 
 
-def get_symbol_data(options_list, symbol, folder=None):
-    path = get_path(symbol, folder)
-    data = retrieve_data(path)
+def get_old_columns(data):
+    dates = sorted(data, reverse=True)
+    if len(dates) == 0:
+        return []
+    # check latest data against date
+    if dates[0] != get_latest_weekday():
+        return get_columns(data)
+    # check missing data
+    columns = set()
+    for date in dates:
+        old_columns = [ k for k,v in data[date].items() if v == '' ]
+        if len(old_columns) > 0:
+            columns.update(old_columns)
+        else:
+            break
+    return list(columns)
+
+
+def refresh_symbol_data(options_list, symbol):
+    data = get_symbol_data(options_list, symbol)
+    # determine missing columns
     present_columns = get_columns(data)
     columns = list(map(lambda c: c[1], hash_options_list(options_list)))
     missing_columns = list_subtract(columns, present_columns)
+    # determine old columns
+    old_columns = get_old_columns(data)
+    missing_columns += old_columns
+    # download new data
     if missing_columns:
         missing_options = [ column_to_options(column, options_list) for column in missing_columns ]
         missing_options = remove_duplicates(missing_options)
         new_data = download_list(missing_options, symbol)
         dict_merge(data, new_data)
         save_data(data, path)
-    data = filter_data(columns, data)
-    return data
 
 
-def get_data(options_list, portfolio, folder=None):
+def refresh_data(options_list, portfolio):
+    for symbol in portfolio:
+        refresh_symbol_data(options_list, symbol)
+
+
+def get_symbol_data(options_list, symbol):
+    path = get_path(symbol)
+    data = retrieve_data(path)
+    columns = list(map(lambda c: c[1], hash_options_list(options_list)))
+    return filter_data(columns, data)
+
+
+def get_data(options_list, portfolio):
     data = {}
     for symbol in portfolio:
-        new_data = get_symbol_data(options_list, symbol, folder)
+        new_data = get_symbol_data(options_list, symbol)
         dict_merge(data, new_data)
     return data
 
@@ -182,9 +183,6 @@ def get_data(options_list, portfolio, folder=None):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         symbol = sys.argv[1]
-        folder = None
-        if len(sys.argv) > 2:
-            folder = sys.argv[2]
-        get_data(DATA_OPTIONS_LIST, [symbol], folder)
+        get_data(OPTIONS_LIST, [symbol])
     else:
         print('Missing symbol argument')
