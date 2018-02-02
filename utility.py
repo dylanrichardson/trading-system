@@ -61,3 +61,20 @@ def date_between(date, start, end):
     start = datetime.strptime(start, date_format)
     end = datetime.strptime(end, date_format)
     return start <= date <= end
+
+
+def dicts_to_arrays(dicts):
+    keys = set()
+    for d in dicts:
+        keys.update(d.keys())
+    keys = list(enumerate(sorted(keys)))
+    arrays = []
+    for d in dicts:
+        x = []
+        y = []
+        for i, v in keys:
+            if v in d:
+                x.append(i)
+                y.append(d[v])
+        arrays.append((x, y))
+    return arrays

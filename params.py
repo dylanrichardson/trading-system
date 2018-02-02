@@ -1,12 +1,15 @@
 import os
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv())
 
 PARAMS = {
 
     'credentials': {
-        'alphavantage': os.environ['alphavantage'],
+        'alphavantage': os.environ.get('alphavantage'),
         'intrinio': {
-            'username': os.environ['intrinio_username'],
-            'password': os.environ['intrinio_password']
+            'username': os.environ.get('intrinio_username'),
+            'password': os.environ.get('intrinio_password')
         }
     },
 
