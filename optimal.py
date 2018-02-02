@@ -70,38 +70,46 @@ def calc_trades(data, tolerance):
     dates = sorted(data)
     prices = [ data[date] for date in dates ]
     trades = optimize_trades(prices, tolerance)
+    trades = smooth_trades(trades, prices)
     trade_data = { dates[key]: val for key, val in trades.items() }
     return trade_data
+
+
+def smooth_trades(trades, prices):
+    if len(trades) < 2:
+        return trades
+
+    buy_price = None
+    sell_price = None
+    ordered_trades = sorted(trades.items())
+
+    for i, (date, trade) in enumerate(ordered_trades[1:]):
+        last_date = ordered_trades[i][0]
+        if trade == BUY:
+            buy_price = prices[date]
+            sell_price = prices[last_date]
+        else:
+            buy_price = prices[last_date]
+            sell_price = prices[date]
+        for j, price in enumerate(prices[last_date + 1:date]):
+            trades[last_date + 1 + j] = smooth_trade(price, buy_price, sell_price)
+
+    return trades
+
+
+def smooth_trade(price, buy_price, sell_price):
+    return 1 - 2 * (price - buy_price) / (sell_price - buy_price)
 
 
 def optimize_trades(prices, tolerance):
     if len(prices) < 2:
         return {}
 
-    buying = True
+    # determine whether to buy or sell first
+    buying = should_buy_first(prices, tolerance)
+
     delay = 0
     trades = {}
-
-    # determine whether to buy or sell first
-    for index, price in enumerate(prices[1:]):
-        index -= delay # index is behind by one = index - 1
-        price_diff = (price - prices[index]) / prices[index]
-
-        if 0 <= price_diff and price_diff <= tolerance:
-            delay += 1
-        else:
-            delay = 0
-            if price_diff > 0:
-                buying = True
-                break
-        if -tolerance <= price_diff and price_diff < 0:
-            delay += 1
-        else:
-            delay = 0
-            if price_diff < 0:
-                trades[index] = SELL
-                buying = False
-                break
 
     # determine when to buy and sell
     for index, price in enumerate(prices[1:]):
@@ -126,3 +134,24 @@ def optimize_trades(prices, tolerance):
                     buying = True
 
     return trades
+
+
+def should_buy_first(prices, tolerance):
+    delay = 0
+
+    for index, price in enumerate(prices[1:]):
+        index -= delay # index is behind by one = index - 1
+        price_diff = (price - prices[index]) / prices[index]
+
+        if 0 <= price_diff and price_diff <= tolerance:
+            delay += 1
+        else:
+            delay = 0
+            if price_diff > 0:
+                return True
+        if -tolerance <= price_diff and price_diff < 0:
+            delay += 1
+        else:
+            delay = 0
+            if price_diff < 0:
+                return False
