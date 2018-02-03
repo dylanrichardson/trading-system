@@ -65,8 +65,7 @@ def convert_data(options, data):
 
 
 def save_data(data, path):
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
+    make_path(path)
     with open(path, 'w') as outfile:
         csv_file = csv.writer(outfile)
         columns = ['Date'] + get_columns(data)
@@ -77,11 +76,6 @@ def save_data(data, path):
 
 def json_to_csv(data, date, headers):
     return [date] + list(map(lambda col: data[date].get(col, ""), headers[1:]))
-
-
-def get_path(symbol):
-    cwd = os.getcwd()
-    return os.path.join(cwd, 'data', 'symbol', symbol + '.csv')
 
 
 def csv_to_json(datum):
@@ -142,8 +136,8 @@ def get_old_columns(data):
     return list(columns)
 
 
-def refresh_symbol_data(options_list, symbol):
-    data = get_symbol_data(options_list, symbol)
+def refresh_symbol_data(symbol, options_list):
+    data = get_symbol_data(symbol, options_list)
     # determine missing columns
     present_columns = get_columns(data)
     columns = list(map(lambda c: c[1], hash_options_list(options_list)))
@@ -160,22 +154,22 @@ def refresh_symbol_data(options_list, symbol):
         save_data(data, path)
 
 
-def refresh_data(options_list, portfolio):
+def refresh_data(portfolio, options_list):
     for symbol in portfolio:
-        refresh_symbol_data(options_list, symbol)
+        refresh_symbol_data(symbol, options_list)
 
 
-def get_symbol_data(options_list, symbol):
-    path = get_path(symbol)
+def get_symbol_data(symbol, options_list):
+    path = get_path(symbol, 'symbol', 'csv')
     data = retrieve_data(path)
     columns = list(map(lambda c: c[1], hash_options_list(options_list)))
-    return filter_data(columns, data)
+    return filter_columns(columns, data)
 
 
-def get_data(options_list, portfolio):
+def get_data(portfolio, options_list):
     data = {}
     for symbol in portfolio:
-        new_data = get_symbol_data(options_list, symbol)
+        new_data = get_symbol_data(symbol, options_list)
         dict_merge(data, new_data)
     return data
 
@@ -183,6 +177,6 @@ def get_data(options_list, portfolio):
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         symbol = sys.argv[1]
-        get_data(OPTIONS_LIST, [symbol])
+        get_symbol_data(symbol, OPTIONS_LIST)
     else:
         print('Missing symbol argument')

@@ -11,7 +11,14 @@ SELL = -1
 
 
 def get_optimal_trades(symbol, start, end, tolerance, smoothed=True):
-    path = get_path(symbol, start, end, tolerance, smoothed)
+    params = {
+        'symbol': symbol,
+        'start': start,
+        'end': end,
+        'tolerance': tolerance,
+        'smoothed': smoothed
+    }
+    path = get_path(params, 'optimal', 'json')
     trades = retrieve_trades(path)
     if trades:
         return trades
@@ -19,18 +26,6 @@ def get_optimal_trades(symbol, start, end, tolerance, smoothed=True):
     trades = calc_trades(data, tolerance, smoothed)
     save_trades(trades, path)
     return trades
-
-
-def get_path(symbol, start, end, tolerance, smoothed):
-    file_name = hash_dict({
-        'symbol': symbol,
-        'start': start,
-        'end': end,
-        'tolerance': tolerance,
-        'smoothed': smoothed
-    })
-    cwd = os.getcwd()
-    return os.path.join(cwd, 'data', 'optimal', file_name + '.json')
 
 
 def retrieve_trades(path):
@@ -50,7 +45,7 @@ def save_trades(trades, path):
 
 def get_close_data(symbol, start, end):
     daily_options = PARAMS['data_options'][0]
-    data = get_symbol_data([daily_options], symbol)
+    data = get_symbol_data(symbol, [daily_options])
     data = filter_dates(data, start, end)
     data = filter_close(data)
     return data

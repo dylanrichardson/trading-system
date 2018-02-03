@@ -3,12 +3,25 @@ from collections import Mapping
 from itertools import filterfalse
 from json import dumps
 from datetime import datetime
+import os
 from params import PARAMS
 
 
 def hash_dict(d):
-    return str(sha1(dumps(d, sort_keys=True).encode('utf8')).hexdigest())
+    if type(d) is dict:
+        return str(sha1(dumps(d, sort_keys=True).encode('utf8')).hexdigest())
+    return str(d)
 
+
+def get_path(params, folder='', ext='txt'):
+    file_name = hash_dict(params)
+    cwd = os.getcwd()
+    return os.path.join(cwd, 'data', folder, file_name + '.' + ext)
+
+
+def make_path(path):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
 
 def dict_merge(dct, merge_dct):
     for k, v in merge_dct.items():
@@ -46,7 +59,7 @@ def get_close_hash():
     return [ col for col in daily_hash if 'close' in col ][0][1]
 
 
-def filter_data(keep, data):
+def filter_columns(keep, data):
     return {
         date: {
             column: val
