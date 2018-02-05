@@ -3,63 +3,56 @@ import os
 import json
 from params import PARAMS
 from utility import *
-from data import get_symbol_data
+from symbol import SymbolCloseData
 
 
 BUY = 1
 SELL = -1
 
+class OptimalTrades(Data):
 
-def get_optimal_trades(symbol, start, end, tolerance, smoothed=True):
-    params = {
-        'symbol': symbol,
-        'start': start,
-        'end': end,
-        'tolerance': tolerance,
-        'smoothed': smoothed
-    }
-    path = get_path(params, 'optimal', 'json')
-    trades = retrieve_trades(path)
-    if trades:
-        return trades
-    data = get_close_data(symbol, start, end)
-    trades = calc_trades(data, tolerance, smoothed)
-    save_trades(trades, path)
-    return trades
+    def __init__(self, symbol, start, end, tolerance, smoothed):
+        self.symbol = symbol
+        self.start = start
+        self.end = end
+        self.tolerance = tolerance
+        self.smoothed = smoothed
+        super().__init__()
 
 
-def retrieve_trades(path):
-    try:
-        with open(path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+    def get_params(self):
+        return {
+            'symbol': self.symbol,
+            'start': self.start,
+            'end': self.end,
+            'tolerance': self.tolerance,
+            'smoothed': self.smoothed
+        }
+
+    def get_new_data(self):
+        data = SymbolCloseData(self.symbol, self.start, self.end).get_data()
+        return calc_trades(data, self.tolerance, self.smoothed)
 
 
-def save_trades(trades, path):
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
-    with open(path, 'w') as outfile:
-        json.dump(trades, outfile)
+    def get_folder(self):
+        return 'optimal'
 
 
-def get_close_data(symbol, start, end):
-    daily_options = PARAMS['data_options'][0]
-    data = get_symbol_data(symbol, [daily_options])
-    data = filter_dates(data, start, end)
-    data = filter_close(data)
-    return data
+    def get_extension(self):
+        return 'json'
 
 
-def filter_dates(data, start, end):
-    return {
-        date: val for date, val in data.items() if date_between(date, start, end)
-    }
+    def read_data(self):
+        try:
+            with open(self.get_path(), 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return
 
 
-def filter_close(data):
-    close_hash = get_close_hash()
-    return { date: float(columns[close_hash]) for date, columns in data.items() }
+    def write_data(self):
+        with open(self.get_path(), 'w') as fh:
+            json.dump(self.get_data(), fh)
 
 
 def calc_trades(data, tolerance, smoothed):

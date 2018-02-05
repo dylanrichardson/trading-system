@@ -20,6 +20,9 @@ def yahoo(screener):
     return [ a.text for a in elements ]
 
 
+# AAII screener 'table > tbody > tr:nth-child(2n+1) > td:nth-child(2) > a'
+# needs authentication
+
 # get data from Intrinio custom screeners
 def request(conditions):
     params = encode_conditions(conditions)

@@ -1,27 +1,106 @@
 from hashlib import sha1
 from collections import Mapping
 from itertools import filterfalse
-from json import dumps
-from datetime import datetime
+import json
+from datetime import datetime, date, timedelta
+import numpy as np
 import os
+from binascii import hexlify, unhexlify
+from Crypto.Cipher import AES
 from params import PARAMS
 
 
-def hash_dict(d):
-    if type(d) is dict:
-        return str(sha1(dumps(d, sort_keys=True).encode('utf8')).hexdigest())
-    return str(d)
+DATE_LENGTH = 10
+CRYPT_KEY = 'This is a key123'
 
 
-def get_path(params, folder='', ext='txt'):
-    file_name = hash_dict(params)
-    cwd = os.getcwd()
-    return os.path.join(cwd, 'data', folder, file_name + '.' + ext)
+class Data:
+
+    def __init__(self):
+        self.path = self.get_path()
+        self.data = self.get_data()
 
 
-def make_path(path):
-    if not os.path.exists(os.path.dirname(path)):
-        os.makedirs(os.path.dirname(path))
+    def get_data(self):
+        if not hasattr(self, 'data'):
+            self.make_path()
+            self.data = self.read_data()
+            if not self.data:
+                self.data = self.get_new_data()
+                self.write_data()
+        return self.data
+
+
+    def get_path(self):
+        if not hasattr(self, 'path'):
+            file_name = encrypt_dict(self.get_params())[:50]
+            cwd = os.getcwd()
+            self.path = os.path.join(cwd, 'data', self.get_folder(), file_name + '.' + self.get_extension())
+        return self.path
+
+
+    def make_path(self):
+        dir_name = os.path.dirname(self.get_path())
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
+
+    def get_params(self):
+        raise NotImplementedError()
+
+
+    def get_new_data(self):
+        raise NotImplementedError()
+
+
+    def get_folder(self):
+        raise NotImplementedError()
+
+
+    def get_extension(self):
+        raise NotImplementedError()
+
+
+    def read_data(self):
+        raise NotImplementedError()
+
+
+    def write_data(self):
+        raise NotImplementedError()
+
+
+def filter_incomplete(d1, d2):
+    d1 = { k: v for k, v in d1.items() if complete(v) }
+    d2 = { k: v for k, v in d2.items() if k in d1 and complete(v) }
+    d1 = { k: v for k, v in d1.items() if k in d2 }
+    return d1, d2
+
+
+def complete(datum):
+    if type(datum) is dict:
+        for _, v in datum.items():
+            if v is None or v == '':
+                return False
+    return True
+
+
+def json_to_matrix(data):
+    if type(data) is dict:
+        return np.array([ json_to_matrix(data[k]) for k in sorted(data) ])
+    return float(data)
+
+
+def encrypt_dict(d):
+    e = AES.new(CRYPT_KEY, AES.MODE_CFB, CRYPT_KEY)
+    s = json.dumps(d, sort_keys=True)
+    return hexlify(e.encrypt(s)).decode('utf-8')
+
+
+def decrypt_dict(crypt):
+    e = AES.new(CRYPT_KEY, AES.MODE_CFB, CRYPT_KEY)
+    s = e.decrypt(unhexlify(crypt))
+    return json.loads(s.decode('utf-8'))
+
 
 def dict_merge(dct, merge_dct):
     for k, v in merge_dct.items():
@@ -32,6 +111,13 @@ def dict_merge(dct, merge_dct):
             dct[k] = merge_dct[k]
 
 
+def merge_data(datum_list):
+    data = {}
+    for datum in datum_list:
+        dict_merge(data, datum)
+    return data
+
+
 def list_subtract(l1, l2):
     return list(filterfalse(lambda x: x in l2, l1))
 
@@ -40,23 +126,19 @@ def remove_duplicates(l):
     return [ i for n, i in enumerate(l) if i not in l[n + 1:] ]
 
 
-def hash_options(options):
-    return [
-        (column, column + hash_dict({
-            key: val for key, val in options.items() if key is not "columns"
-        }))
-        for column in options['columns']
-    ]
+def encrypt_options(options):
+    return [ (column, encrypt_dict({**options, **{'column':column}}))
+        for column in options['columns'] ]
 
 
-def hash_options_list(options_list):
-    return [ column for options in options_list for column in hash_options(options) ]
+def encrypt_options_list(options_list):
+    return [ column for options in options_list for column in encrypt_options(options) ]
 
 
-def get_close_hash():
+def get_close_crypt():
     daily_options = PARAMS['data_options'][0]
-    daily_hash = hash_options(daily_options)
-    return [ col for col in daily_hash if 'close' in col ][0][1]
+    daily_crypt = encrypt_options(daily_options)
+    return [ col for col in daily_crypt if 'close' in col ][0][1]
 
 
 def filter_columns(keep, data):
@@ -67,6 +149,17 @@ def filter_columns(keep, data):
         } for date, columns in data.items()
     }
 
+
+def extract_column(column, data):
+    return { date: columns[column] for date, columns in data.items() }
+
+
+def get_latest_weekday():
+    today = date.today()
+    latest_day = today - timedelta(max(4, today.weekday()) - 4)
+    return latest_day.strftime('%Y-%m-%d')
+
+
 # inclusive
 def date_between(date, start, end):
     date_format = '%Y-%m-%d'
@@ -76,12 +169,30 @@ def date_between(date, start, end):
     return start <= date <= end
 
 
-def dicts_to_arrays(dicts):
+def filter_dates(data, start, end):
+    return {
+        date: val for date, val in data.items() if date_between(date, start, end)
+    }
+
+
+def filter_close(data):
+    close_hash = get_close_crypt()
+    return { date: float(columns[close_hash]) for date, columns in data.items() }
+
+
+def get_columns(data):
+    for date in data.keys():
+        if len(date) == DATE_LENGTH:
+            return list(data[date].keys())
+    return []
+
+
+def dicts_to_xys(dicts):
     keys = set()
     for d in dicts:
         keys.update(d.keys())
     keys = list(enumerate(sorted(keys)))
-    arrays = []
+    xys = []
     for d in dicts:
         x = []
         y = []
@@ -89,5 +200,5 @@ def dicts_to_arrays(dicts):
             if v in d:
                 x.append(i)
                 y.append(d[v])
-        arrays.append((x, y))
-    return arrays
+        xys.append((x, y))
+    return xys
