@@ -6,12 +6,15 @@ import requests
 import json
 import csv
 import datetime
+import argparse
+from data import Data
 from utility import *
+from screener import yahoo
 from params import PARAMS
 
 
 API_KEY = PARAMS['credentials']['alphavantage']
-DAILY_OPTIONS = PARAMS['data_options'][0]
+DAILY_OPTIONS = PARAMS['data_options']['daily']()
 
 
 class SymbolData(Data):
@@ -119,7 +122,7 @@ def download_symbol_datum(symbol, options):
     options = {
         key: value for key, value in options.items() if value is not 'columns'
     }
-    print('downloading', symbol, 'with options', options)
+    print('Downloading', options['function'], 'data for', symbol)
     data = request({ **{
         'symbol': symbol,
         'apikey': API_KEY
@@ -205,3 +208,50 @@ def get_missing_columns(data, options_list):
     columns = list(map(lambda c: c[1], encrypt_options_list(options_list)))
     missing_columns = list_subtract(columns, present_columns)
     return missing_columns
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Load symbol data.')
+    parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
+    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
+    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
+    parser.add_argument('-o', '--options', type=int, nargs='+', required=True,
+                        help='indices of data_options in params.py')
+    parser.add_argument('--start', type=str, help='start date of data')
+    parser.add_argument('--end', type=str, help='end date of data')
+    parser.add_argument('-r', '--refresh', action='store_true', help='refresh the data')
+    parser.add_argument('-p', '--print', action='store_true', help='print the data')
+    parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
+
+    args = parser.parse_args()
+
+    PARAMS['verbose'] = args.verbose
+
+    if not args.symbols and not args.screener:
+        parser.error('At least one of -s/--symbols or -y/--screener is required')
+
+    return args
+
+
+def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
+    symbols = get_symbols(symbols, screener, limit)
+    options_list = get_options_list(options)
+    data = {}
+    for symbol in symbols:
+        symbol_data = SymbolData(symbol, options_list, start, end)
+        if refresh:
+            symbol_data.refresh_data(update_old=True)
+        data[symbol] = symbol_data.get_data()
+    return data
+
+
+def main():
+    args = parse_args()
+    data = get_portfolio_data(args.symbols, args.screener, args.options, args.limit,
+        args.start, args.end, args.refresh)
+    if args.print:
+        print(json.dumps(data, indent=4, sort_keys=True))
+
+
+if __name__ == '__main__':
+    main()

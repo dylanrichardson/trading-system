@@ -11,62 +11,16 @@ from params import PARAMS
 
 
 DATE_LENGTH = 10
-CRYPT_KEY = 'This is a key123'
+CRYPT_KEY = '1234567890123456'
 
 
-class Data:
-
-    def __init__(self):
-        self.path = self.get_path()
-        self.data = self.get_data()
+def log(*args, **kwargs):
+    if PARAMS['verbose']:
+        print(*args, **kwargs)
 
 
-    def get_data(self):
-        if not hasattr(self, 'data'):
-            self.make_path()
-            self.data = self.read_data()
-            if not self.data:
-                self.data = self.get_new_data()
-                self.write_data()
-        return self.data
-
-
-    def get_path(self):
-        if not hasattr(self, 'path'):
-            file_name = encrypt_dict(self.get_params())[:50]
-            cwd = os.getcwd()
-            self.path = os.path.join(cwd, 'data', self.get_folder(), file_name + '.' + self.get_extension())
-        return self.path
-
-
-    def make_path(self):
-        dir_name = os.path.dirname(self.get_path())
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
-
-
-    def get_params(self):
-        raise NotImplementedError()
-
-
-    def get_new_data(self):
-        raise NotImplementedError()
-
-
-    def get_folder(self):
-        raise NotImplementedError()
-
-
-    def get_extension(self):
-        raise NotImplementedError()
-
-
-    def read_data(self):
-        raise NotImplementedError()
-
-
-    def write_data(self):
-        raise NotImplementedError()
+def shorten_path(path):
+     return str(sha1(path.encode('utf-8')).hexdigest())
 
 
 def filter_incomplete(d1, d2):
@@ -136,7 +90,7 @@ def encrypt_options_list(options_list):
 
 
 def get_close_crypt():
-    daily_options = PARAMS['data_options'][0]
+    daily_options = PARAMS['data_options']['daily']()
     daily_crypt = encrypt_options(daily_options)
     return [ col for col in daily_crypt if 'close' in col ][0][1]
 
@@ -202,3 +156,23 @@ def dicts_to_xys(dicts):
                 y.append(d[v])
         xys.append((x, y))
     return xys
+
+
+def get_symbols(symbols, screener, limit):
+    symbols = symbols or []
+    if screener:
+        symbols += yahoo(screener)
+    return symbols[:limit]
+
+
+def get_options(options_str):
+    paren = options_str.find('(')
+    if paren == -1:
+        return PARAMS['data_options'][options_str]()
+    name = options_str[:paren]
+    args = options_str[paren + 1:-1].split(',')
+    return PARAMS['data_options'][name](*args)
+
+
+def get_options_list(options_strs):
+    return [ get_options(options_str) for options_str in options_strs ]

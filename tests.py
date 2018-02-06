@@ -1,5 +1,13 @@
 import unittest
-from optimal import calc_trades, smooth_trades, optimize_trades, BUY, SELL
+import shutil
+import os
+from params import PARAMS
+from symbol import SymbolData
+from optimal import *
+from ann import NeuralNetworkData
+from graph import OptimalTradesGraph, SymbolDataGraph
+from screener import yahoo
+
 
 class TestOptimal(unittest.TestCase):
 
@@ -89,6 +97,65 @@ class TestOptimal(unittest.TestCase):
         prices = [20, 30, 10]
         trades = {0: BUY, 1: SELL}
         self.assertEqual(smooth_trades(trades, prices), trades)
+
+
+def remove_last_line(path):
+    file = open(path, 'r+', encoding = 'utf-8')
+    file.seek(0, os.SEEK_END)
+    pos = file.tell() - 1
+    while pos > 0 and file.read(1) != "\n":
+        pos -= 2
+        file.seek(pos, os.SEEK_SET)
+    if pos > 0:
+        file.seek(pos, os.SEEK_SET)
+        file.truncate()
+    file.close()
+
+def remove_folder(path):
+    try:
+        shutil.rmtree(path)
+    except FileNotFoundError:
+        pass
+
+
+class TestAllData(unittest.TestCase):
+
+    def test_all(self):
+        PARAMS['data_folder'] = 'test'
+        remove_folder('test')
+
+        print('\n\nTesting symbol data...\n\n')
+
+        SymbolData('AAPL', get_options_list(['sma', 'ema']))
+        SymbolData('AAPL', get_options_list(['macd', 'ema']))
+        data = SymbolData('AAPL', get_options_list(['sma']))
+
+        print('refreshing data...')
+        remove_last_line(data.get_path())
+
+        SymbolData('AAPL', get_options_list(['sma', 'ema'])).refresh_data(update_old=True)
+
+        print('\n\nTesting Yahoo screener...\n\n')
+
+        yahoo('day_gainers')
+
+        print('\n\nTesting optimal trade data...\n\n')
+
+        OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0.01)
+        OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0)
+
+        print('\n\nTesting graphs...\n\n')
+
+        OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-31', 0.01)
+        OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-30', 0.01)
+
+
+        print('\n\nTesting neural network data...\n\n')
+
+        NeuralNetworkData('AAPL', get_options_list(['sma', 'ema']), 0, '2018-01-01', '2018-01-31', 0.01)
+        NeuralNetworkData('AAPL', get_options_list(['macd', 'ema']), 1, '2018-01-01', '2018-01-31', 0.01)
+
+        remove_folder('test')
 
 
 if __name__ == '__main__':

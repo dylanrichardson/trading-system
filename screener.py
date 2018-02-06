@@ -5,12 +5,8 @@ from urllib.parse import quote_plus
 import requests
 import json
 from base64 import b64encode
-from params import USERNAME, PASSWORD
+from params import PARAMS
 from pyquery import PyQuery as pq
-
-
-def get_portfolio(screener):
-    return yahoo(screener)
 
 
 # get data from Yahoo predefined screeners
@@ -23,6 +19,9 @@ def yahoo(screener):
 # AAII screener 'table > tbody > tr:nth-child(2n+1) > td:nth-child(2) > a'
 # needs authentication
 
+
+USERNAME = PARAMS['credentials']['intrinio']['username']
+PASSWORD = PARAMS['credentials']['intrinio']['password']
 # get data from Intrinio custom screeners
 def request(conditions):
     params = encode_conditions(conditions)
