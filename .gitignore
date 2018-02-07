@@ -103,11 +103,11 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-# Other
-bin/
-man/
-include/
-pip-selfcheck.json
-
 # Data
 data/
+
+# Other
+man/
+include/
+.idea/
+trading-system.iml

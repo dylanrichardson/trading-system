@@ -1,5 +1,3 @@
-import matplotlib
-matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import pickle
 from argparse import ArgumentParser
@@ -14,10 +12,8 @@ class Graph(Data):
     def get_folder(self):
         return 'graph'
 
-
     def get_extension(self):
         return ''
-
 
     def read_data(self):
         try:
@@ -26,25 +22,21 @@ class Graph(Data):
         except FileNotFoundError:
             return
 
-
     def write_data(self):
         fig = self.get_data()
         fig.savefig(self.get_path() + 'png')
         with open(self.get_path() + 'pkl', 'wb') as fh:
             pickle.dump(fig, fh)
 
-
     def get_figure(self):
         return self.get_data()
 
-
     def get_new_data(self):
+        log('Graphing...')
         return self.make_figure()
-
 
     def make_figure(self):
         raise NotImplementedError()
-
 
     def show(self):
         self.get_figure().show()
@@ -59,7 +51,6 @@ class SymbolDataGraph(Graph):
         self.end = end
         super().__init__()
 
-
     def get_params(self):
         return {
             'symbol': self.symbol,
@@ -68,12 +59,11 @@ class SymbolDataGraph(Graph):
             'end': self.end
         }
 
-
     def make_figure(self):
         log('Making new symbol data graph...')
         data = SymbolData(self.symbol, self.options_list, self.start, self.end).get_data()
         columns = get_columns(data)
-        data_list = [ extract_column(col, data) for col in columns ]
+        data_list = [extract_column(col, data) for col in columns]
 
         xys = dicts_to_xys(data_list)
 
@@ -93,7 +83,6 @@ class OptimalTradesGraph(Graph):
         self.tolerance = tolerance
         super().__init__()
 
-
     def get_params(self):
         return {
             'symbol': self.symbol,
@@ -102,15 +91,14 @@ class OptimalTradesGraph(Graph):
             'tolerance': self.tolerance
         }
 
-
     def make_figure(self):
         prices = SymbolCloseData(self.symbol, self.start, self.end).get_data()
         trades = OptimalTrades(self.symbol, self.start, self.end, self.tolerance).get_data()
 
-        buy_sizes = { k: 20 * v for k, v in trades.items() if v > 0 }
-        buy_prices = { k: prices[k] for k in buy_sizes }
-        sell_sizes = { k: -20 * v for k, v in trades.items() if v < 0 }
-        sell_prices = { k: prices[k] for k in sell_sizes }
+        buy_sizes = {k: 20 * v for k, v in trades.items() if v > 0}
+        buy_prices = {k: prices[k] for k in buy_sizes}
+        sell_sizes = {k: -20 * v for k, v in trades.items() if v < 0}
+        sell_prices = {k: prices[k] for k in sell_sizes}
 
         (xp, yp), (xb, ybp), (_, ybs), (xs, ysp), (_, yss) = dicts_to_xys([
             prices, buy_prices, buy_sizes, sell_prices, sell_sizes
@@ -131,7 +119,7 @@ def parse_args():
     parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
     parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
     parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('-o', '--options', type=int, nargs='+',
+    parser.add_argument('-o', '--options', type=str, nargs='+',
                         help='indices of data_options in params.py')
     parser.add_argument('-t', '--tolerance', type=float, help='tolerance to use in algorithm')
     parser.add_argument('--start', type=str, help='start date of data')
@@ -141,7 +129,7 @@ def parse_args():
 
     args = parser.parse_args()
 
-    PARAMS['verbose'] = args.verbose
+    set_verbosity(args.verbose)
 
     if not args.symbols and not args.screener:
         parser.error('At least one of -s/--symbols or -y/--screener is required')
@@ -178,7 +166,7 @@ def main():
     elif args.data == 'optimal':
         get_optimal_trades_graphs(symbols, args.start, args.end, args.tolerance)
     else:
-        pass # TODO get_neural_network_graphs()
+        pass  # TODO get_neural_network_graphs()
     if args.print:
         plt.show()
 

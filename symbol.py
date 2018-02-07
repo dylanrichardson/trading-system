@@ -1,15 +1,10 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
-import sys
-import os
 from urllib.parse import urlencode
 import requests
-import json
 import csv
-import datetime
 import argparse
 from data import Data
 from utility import *
-from screener import yahoo
 from params import PARAMS
 
 
@@ -27,20 +22,16 @@ class SymbolData(Data):
         self.all_data = {}
         super().__init__()
 
-
     def get_params(self):
         return {
             'symbol': self.symbol
         }
 
-
     def get_folder(self):
         return 'symbol'
 
-
     def get_extension(self):
         return 'csv'
-
 
     def write_data(self):
         with open(self.get_path(), 'w') as outfile:
@@ -51,20 +42,17 @@ class SymbolData(Data):
             for date in sorted(data):
                 csv_file.writerow(json_to_csv(data, date, columns))
 
-
     def get_all_data(self):
         if not self.all_data:
             self.get_data()
         return self.all_data
 
-
     def read_data(self):
         self.all_data = self.read_all_data()
         self.refresh_data()
         if self.all_data:
-            data =  self.filter_data(self.all_data)
+            data = self.filter_data(self.all_data)
             return data
-
 
     def filter_data(self, data):
         columns = list(map(lambda c: c[1], encrypt_options_list(self.options_list)))
@@ -72,7 +60,6 @@ class SymbolData(Data):
         if self.start and self.end:
             data = filter_dates(data, self.start, self.end)
         return data
-
 
     def read_all_data(self):
         try:
@@ -86,12 +73,10 @@ class SymbolData(Data):
         except FileNotFoundError:
             return {}
 
-
     def get_new_data(self):
         data = download_symbol_data(self.symbol, self.options_list)
         dict_merge(self.all_data, data)
         return self.filter_data(data)
-
 
     def refresh_data(self, update_old=False):
         missing_columns = get_missing_columns(self.all_data, self.options_list)
@@ -108,11 +93,11 @@ class SymbolData(Data):
 class SymbolCloseData(SymbolData):
 
     def __init__(self, symbol, start=None, end=None):
+        self.data = None
         super().__init__(symbol, [DAILY_OPTIONS], start, end)
 
-
     def get_data(self):
-        if not hasattr(self, 'data'):
+        if not self.data:
             data = super().get_data()
             self.data = filter_close(data)
         return self.data
@@ -122,11 +107,11 @@ def download_symbol_datum(symbol, options):
     options = {
         key: value for key, value in options.items() if value is not 'columns'
     }
-    print('Downloading', options['function'], 'data for', symbol)
-    data = request({ **{
+    log('Downloading %s data for %s...' % (options['function'], symbol))
+    data = request({**{
         'symbol': symbol,
         'apikey': API_KEY
-    }, **options })
+    }, **options})
     data = sanitize_data(data)
     data = convert_data(data, options)
     return data
@@ -140,7 +125,6 @@ def download_symbol_data(symbol, options_list):
     return data
 
 
-
 def request(options):
     url = 'https://www.alphavantage.co/query?%s' % urlencode(options)
     data = requests.get(url).json()
@@ -151,11 +135,11 @@ def request(options):
 
 
 def sanitize_data(data):
-    return { date[:DATE_LENGTH]: sanitize_datum(data[date]) for date in data }
+    return {date[:DATE_LENGTH]: sanitize_datum(data[date]) for date in data}
 
 
 def sanitize_datum(datum):
-    return { (key[3:] if key[1:3] == ". " else key): val for key, val in datum.items() }
+    return {(key[3:] if key[1:3] == ". " else key): val for key, val in datum.items()}
 
 
 def convert_data(data, options):
@@ -175,11 +159,11 @@ def json_to_csv(data, date, headers):
 def csv_to_json(datum):
     date = datum['Date']
     del datum['Date']
-    return { date: datum }
+    return {date: datum}
 
 
 def columns_to_options(columns):
-    options_list = [ decrypt_dict(column) for column in columns ]
+    options_list = [decrypt_dict(column) for column in columns]
     for options in options_list:
         del options['column']
     return remove_duplicates(options_list)
@@ -195,7 +179,7 @@ def get_old_columns(data):
     # check missing data
     columns = set()
     for date in dates:
-        old_columns = [ k for k,v in data[date].items() if v == '' ]
+        old_columns = [k for k, v in data[date].items() if v == '']
         if len(old_columns) > 0:
             columns.update(old_columns)
         else:
@@ -215,7 +199,7 @@ def parse_args():
     parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
     parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
     parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('-o', '--options', type=int, nargs='+', required=True,
+    parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
                         help='indices of data_options in params.py')
     parser.add_argument('--start', type=str, help='start date of data')
     parser.add_argument('--end', type=str, help='end date of data')
@@ -225,7 +209,7 @@ def parse_args():
 
     args = parser.parse_args()
 
-    PARAMS['verbose'] = args.verbose
+    set_verbosity(args.verbose)
 
     if not args.symbols and not args.screener:
         parser.error('At least one of -s/--symbols or -y/--screener is required')
@@ -248,9 +232,9 @@ def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
 def main():
     args = parse_args()
     data = get_portfolio_data(args.symbols, args.screener, args.options, args.limit,
-        args.start, args.end, args.refresh)
+                              args.start, args.end, args.refresh)
     if args.print:
-        print(json.dumps(data, indent=4, sort_keys=True))
+        log(data, forcce=True)
 
 
 if __name__ == '__main__':

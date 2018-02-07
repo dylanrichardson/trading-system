@@ -4,10 +4,10 @@ from itertools import filterfalse
 import json
 from datetime import datetime, date, timedelta
 import numpy as np
-import os
 from binascii import hexlify, unhexlify
 from Crypto.Cipher import AES
 from params import PARAMS
+from screener import yahoo
 
 
 DATE_LENGTH = 10
@@ -15,8 +15,21 @@ CRYPT_KEY = '1234567890123456'
 
 
 def log(*args, **kwargs):
-    if PARAMS['verbose']:
+    if PARAMS['verbose'] or kwargs['force']:
+        args = list(args)
+        for i, arg in enumerate(args):
+            if type(arg) is dict:
+                try:
+                    args[i] = json.dumps(arg, indent=4, sort_keys=True)
+                except:
+                    pass
+        if 'force' in kwargs:
+            del kwargs['force']
         print(*args, **kwargs)
+
+
+def set_verbosity(verbose):
+    PARAMS['verbose'] = verbose or PARAMS['verbose']
 
 
 def shorten_path(path):
@@ -77,7 +90,7 @@ def list_subtract(l1, l2):
 
 
 def remove_duplicates(l):
-    return [ i for n, i in enumerate(l) if i not in l[n + 1:] ]
+    return [ i for n, i in enumerate(l) if i not in l[:n] ]
 
 
 def encrypt_options(options):
@@ -114,12 +127,15 @@ def get_latest_weekday():
     return latest_day.strftime('%Y-%m-%d')
 
 
+def to_date(date):
+    return datetime.strptime(date, '%Y-%m-%d')
+
+
 # inclusive
 def date_between(date, start, end):
-    date_format = '%Y-%m-%d'
-    date = datetime.strptime(date, date_format)
-    start = datetime.strptime(start, date_format)
-    end = datetime.strptime(end, date_format)
+    date = to_date(date)
+    start = to_date(start)
+    end = to_date(end)
     return start <= date <= end
 
 

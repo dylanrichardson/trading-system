@@ -25,7 +25,7 @@ check_credentials()
 
 PARAMS = {
 
-    'verbose': False,
+    'verbose': os.environ.get('verbose', False),
 
     'credentials': {
         'alphavantage': os.environ.get(ALPHAVANTAGE),
@@ -35,7 +35,7 @@ PARAMS = {
         }
     },
 
-    'data_folder': os.environ.get('data_folder') or DATA_FOLDER,
+    'data_folder': os.environ.get('data_folder', DATA_FOLDER),
 
     'screeners': {
         'yahoo': [

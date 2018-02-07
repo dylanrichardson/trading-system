@@ -1,15 +1,12 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
-import os
-import json
 from argparse import ArgumentParser
 from data import Data
-from params import PARAMS
 from utility import *
 from symbol import SymbolCloseData
 
-
 BUY = 1
 SELL = -1
+
 
 class OptimalTrades(Data):
 
@@ -20,7 +17,6 @@ class OptimalTrades(Data):
         self.tolerance = tolerance
         super().__init__()
 
-
     def get_params(self):
         return {
             'symbol': self.symbol,
@@ -30,17 +26,15 @@ class OptimalTrades(Data):
         }
 
     def get_new_data(self):
+        log('Calculating optimal trades...')
         data = SymbolCloseData(self.symbol, self.start, self.end).get_data()
         return calc_trades(data, self.tolerance)
-
 
     def get_folder(self):
         return 'optimal'
 
-
     def get_extension(self):
         return 'json'
-
 
     def read_data(self):
         try:
@@ -49,7 +43,6 @@ class OptimalTrades(Data):
         except FileNotFoundError:
             return
 
-
     def write_data(self):
         with open(self.get_path(), 'w') as fh:
             json.dump(self.get_data(), fh)
@@ -57,10 +50,10 @@ class OptimalTrades(Data):
 
 def calc_trades(data, tolerance):
     dates = sorted(data)
-    prices = [ data[date] for date in dates ]
+    prices = [data[date] for date in dates]
     trades = optimize_trades(prices, tolerance)
     trades = smooth_trades(trades, prices)
-    trade_data = { dates[key]: val for key, val in trades.items() }
+    trade_data = {dates[key]: val for key, val in trades.items()}
     return trade_data
 
 
@@ -68,8 +61,6 @@ def smooth_trades(trades, prices):
     if len(trades) < 2:
         return trades
 
-    buy_price = None
-    sell_price = None
     ordered_trades = sorted(trades.items())
 
     for i, (date, trade) in enumerate(ordered_trades[1:]):
@@ -102,19 +93,19 @@ def optimize_trades(prices, tolerance):
 
     # determine when to buy and sell
     for index, price in enumerate(prices[1:]):
-        index -= delay # index is behind by one = index - 1
+        index -= delay  # index is behind by one = index - 1
         price_diff = (price - prices[index]) / prices[index]
 
-        if buying: # looking to buy
-            if 0 <= price_diff and price_diff <= tolerance:
+        if buying:  # looking to buy
+            if 0 <= price_diff <= tolerance:
                 delay += 1
             else:
                 delay = 0
                 if price_diff > 0:
                     trades[index] = BUY
                     buying = False
-        else: # looking to sell
-            if -tolerance <= price_diff and price_diff <= 0:
+        else:  # looking to sell
+            if -tolerance <= price_diff <= 0:
                 delay += 1
             else:
                 delay = 0
@@ -129,16 +120,16 @@ def should_buy_first(prices, tolerance):
     delay = 0
 
     for index, price in enumerate(prices[1:]):
-        index -= delay # index is behind by one = index - 1
+        index -= delay  # index is behind by one = index - 1
         price_diff = (price - prices[index]) / prices[index]
 
-        if 0 <= price_diff and price_diff <= tolerance:
+        if 0 <= price_diff <= tolerance:
             delay += 1
         else:
             delay = 0
             if price_diff > 0:
                 return True
-        if -tolerance <= price_diff and price_diff < 0:
+        if -tolerance <= price_diff < 0:
             delay += 1
         else:
             delay = 0
@@ -160,7 +151,7 @@ def parse_args():
 
     args = parser.parse_args()
 
-    PARAMS['verbose'] = args.verbose
+    set_verbosity(args.verbose)
 
     if not args.symbols and not args.screener:
         parser.error('At least one of --symbols or --screener is required')
@@ -179,9 +170,9 @@ def get_optimal_trades(symbols, screener, limit, start, end, tolerance):
 def main():
     args = parse_args()
     trades = get_optimal_trades(args.symbols, args.screener, args.limit,
-        args.start, args.end, args.tolerance)
+                                args.start, args.end, args.tolerance)
     if args.print:
-        print(json.dumps(trades, indent=4, sort_keys=True))
+        log(trades, force=True)
 
 
 if __name__ == '__main__':

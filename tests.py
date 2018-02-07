@@ -124,33 +124,33 @@ class TestAllData(unittest.TestCase):
         PARAMS['data_folder'] = 'test'
         remove_folder('test')
 
-        print('\n\nTesting symbol data...\n\n')
+        log('\n\nTesting symbol data...\n\n')
 
         SymbolData('AAPL', get_options_list(['sma', 'ema']))
         SymbolData('AAPL', get_options_list(['macd', 'ema']))
         data = SymbolData('AAPL', get_options_list(['sma']))
 
-        print('refreshing data...')
+        log('refreshing data...')
         remove_last_line(data.get_path())
 
         SymbolData('AAPL', get_options_list(['sma', 'ema'])).refresh_data(update_old=True)
 
-        print('\n\nTesting Yahoo screener...\n\n')
+        log('\n\nTesting Yahoo screener...\n\n')
 
         yahoo('day_gainers')
 
-        print('\n\nTesting optimal trade data...\n\n')
+        log('\n\nTesting optimal trade data...\n\n')
 
         OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0.01)
         OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0)
 
-        print('\n\nTesting graphs...\n\n')
+        log('\n\nTesting graphs...\n\n')
 
         OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-31', 0.01)
         OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-30', 0.01)
 
 
-        print('\n\nTesting neural network data...\n\n')
+        log('\n\nTesting neural network data...\n\n')
 
         NeuralNetworkData('AAPL', get_options_list(['sma', 'ema']), 0, '2018-01-01', '2018-01-31', 0.01)
         NeuralNetworkData('AAPL', get_options_list(['macd', 'ema']), 1, '2018-01-01', '2018-01-31', 0.01)
