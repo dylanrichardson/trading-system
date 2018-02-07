@@ -223,8 +223,7 @@ def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
     data = {}
     for symbol in symbols:
         symbol_data = SymbolData(symbol, options_list, start, end)
-        if refresh:
-            symbol_data.refresh_data(update_old=True)
+        symbol_data.refresh_data(update_old=refresh)
         data[symbol] = symbol_data.get_data()
     return data
 
@@ -232,9 +231,8 @@ def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
 def main():
     args = parse_args()
     data = get_portfolio_data(args.symbols, args.screener, args.options, args.limit,
-                              args.start, args.end, args.refresh)
-    if args.print:
-        log(data, forcce=True)
+                        args.start, args.end, args.refresh)
+    log(data, force=args.print)
 
 
 if __name__ == '__main__':

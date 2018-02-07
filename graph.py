@@ -167,7 +167,7 @@ def main():
         get_optimal_trades_graphs(symbols, args.start, args.end, args.tolerance)
     else:
         pass  # TODO get_neural_network_graphs()
-    if args.print:
+    if args.print or PARAMS['verbose']:
         plt.show()
 
 

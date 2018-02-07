@@ -1,19 +1,18 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
-import sys
-import os
+
+from argparse import ArgumentParser
 from urllib.parse import quote_plus
 import requests
-import json
 from base64 import b64encode
-from params import PARAMS
 from pyquery import PyQuery as pq
+from utility import *
 
 
 # get data from Yahoo predefined screeners
 def yahoo(screener):
     d = pq(url='https://finance.yahoo.com/screener/predefined/%s' % screener)
     elements = d("td.Va\\(m\\) > a.Fw\\(b\\)")
-    return [ a.text for a in elements ]
+    return [a.text for a in elements]
 
 
 # AAII screener 'table > tbody > tr:nth-child(2n+1) > td:nth-child(2) > a'
@@ -22,6 +21,8 @@ def yahoo(screener):
 
 USERNAME = PARAMS['credentials']['intrinio']['username']
 PASSWORD = PARAMS['credentials']['intrinio']['password']
+
+
 # get data from Intrinio custom screeners
 def request(conditions):
     params = encode_conditions(conditions)
@@ -54,3 +55,29 @@ def encode_condition(condition):
 
 def encode_conditions(conditions):
     return ",".join(map(encode_condition, conditions))
+
+
+def parse_args():
+    parser = ArgumentParser(description='Screen for symbols.')
+    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
+    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
+    parser.add_argument('-p', '--print', action='store_true', help='print the data')
+    parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
+
+    args = parser.parse_args()
+
+    set_verbosity(args.verbose)
+
+    return args
+
+
+def main():
+    args = parse_args()
+    data = None
+    if args.screener:
+        data = ' '.join(get_symbols(None, args.screener, args.limit))
+    log(data, force=args.print)
+
+
+if __name__ == '__main__':
+    main()

@@ -11,6 +11,9 @@ class Data:
         self.path = self.get_path()
         self.data = self.get_data()
 
+    def data_error_msg(self):
+        return 'Failed to get data for ' + str(self.get_params())
+
     def get_data(self):
         try:
             if not self.data:
@@ -19,9 +22,11 @@ class Data:
                 if not self.data:
                     self.data = self.get_new_data()
                     self.write_data()
+                if not self.data:
+                    raise Exception(self.data_error_msg())
             return self.data
         except Exception:
-            raise Exception(traceback.format_exc() + '\nFailed to get data for ' + str(self.get_params()))
+            raise Exception(traceback.format_exc() + '\n' + self.data_error_msg())
 
     def get_path(self):
         if not self.path:
@@ -32,9 +37,7 @@ class Data:
         return self.path
 
     def make_path(self):
-        dir_name = os.path.dirname(self.get_path())
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
+        make_path(self.get_path())
 
     def get_params(self):
         raise NotImplementedError()

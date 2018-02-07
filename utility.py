@@ -5,17 +5,17 @@ import json
 from datetime import datetime, date, timedelta
 import numpy as np
 from binascii import hexlify, unhexlify
+import os
 from Crypto.Cipher import AES
 from params import PARAMS
 from screener import yahoo
-
 
 DATE_LENGTH = 10
 CRYPT_KEY = '1234567890123456'
 
 
-def log(*args, **kwargs):
-    if PARAMS['verbose'] or kwargs['force']:
+def log(*args, force=False, **kwargs):
+    if PARAMS['verbose'] or force:
         args = list(args)
         for i, arg in enumerate(args):
             if type(arg) is dict:
@@ -23,8 +23,6 @@ def log(*args, **kwargs):
                     args[i] = json.dumps(arg, indent=4, sort_keys=True)
                 except:
                     pass
-        if 'force' in kwargs:
-            del kwargs['force']
         print(*args, **kwargs)
 
 
@@ -33,13 +31,19 @@ def set_verbosity(verbose):
 
 
 def shorten_path(path):
-     return str(sha1(path.encode('utf-8')).hexdigest())
+    return str(sha1(path.encode('utf-8')).hexdigest())
+
+
+def make_path(path):
+    dir_name = os.path.dirname(path)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
 
 
 def filter_incomplete(d1, d2):
-    d1 = { k: v for k, v in d1.items() if complete(v) }
-    d2 = { k: v for k, v in d2.items() if k in d1 and complete(v) }
-    d1 = { k: v for k, v in d1.items() if k in d2 }
+    d1 = {k: v for k, v in d1.items() if complete(v)}
+    d2 = {k: v for k, v in d2.items() if k in d1 and complete(v)}
+    d1 = {k: v for k, v in d1.items() if k in d2}
     return d1, d2
 
 
@@ -53,7 +57,7 @@ def complete(datum):
 
 def json_to_matrix(data):
     if type(data) is dict:
-        return np.array([ json_to_matrix(data[k]) for k in sorted(data) ])
+        return np.array([json_to_matrix(data[k]) for k in sorted(data)])
     return float(data)
 
 
@@ -90,22 +94,22 @@ def list_subtract(l1, l2):
 
 
 def remove_duplicates(l):
-    return [ i for n, i in enumerate(l) if i not in l[:n] ]
+    return [i for n, i in enumerate(l) if i not in l[:n]]
 
 
 def encrypt_options(options):
-    return [ (column, encrypt_dict({**options, **{'column':column}}))
-        for column in options['columns'] ]
+    return [(column, encrypt_dict({**options, **{'column': column}}))
+            for column in options['columns']]
 
 
 def encrypt_options_list(options_list):
-    return [ column for options in options_list for column in encrypt_options(options) ]
+    return [column for options in options_list for column in encrypt_options(options)]
 
 
 def get_close_crypt():
     daily_options = PARAMS['data_options']['daily']()
     daily_crypt = encrypt_options(daily_options)
-    return [ col for col in daily_crypt if 'close' in col ][0][1]
+    return [col for col in daily_crypt if 'close' in col][0][1]
 
 
 def filter_columns(keep, data):
@@ -118,7 +122,7 @@ def filter_columns(keep, data):
 
 
 def extract_column(column, data):
-    return { date: columns[column] for date, columns in data.items() }
+    return {date: columns[column] for date, columns in data.items()}
 
 
 def get_latest_weekday():
@@ -147,7 +151,7 @@ def filter_dates(data, start, end):
 
 def filter_close(data):
     close_hash = get_close_crypt()
-    return { date: float(columns[close_hash]) for date, columns in data.items() }
+    return {date: float(columns[close_hash]) for date, columns in data.items()}
 
 
 def get_columns(data):
@@ -191,4 +195,4 @@ def get_options(options_str):
 
 
 def get_options_list(options_strs):
-    return [ get_options(options_str) for options_str in options_strs ]
+    return [get_options(options_str) for options_str in options_strs]

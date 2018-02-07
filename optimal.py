@@ -170,9 +170,8 @@ def get_optimal_trades(symbols, screener, limit, start, end, tolerance):
 def main():
     args = parse_args()
     trades = get_optimal_trades(args.symbols, args.screener, args.limit,
-                                args.start, args.end, args.tolerance)
-    if args.print:
-        log(trades, force=True)
+                            args.start, args.end, args.tolerance)
+    log(trades, force=args.print)
 
 
 if __name__ == '__main__':

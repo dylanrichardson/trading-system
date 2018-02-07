@@ -6,15 +6,6 @@ from optimal import OptimalTrades
 from utility import *
 
 
-class NeuralNetwork(Data):
-
-    def __init__(self, training=None, validation=None, testing=None):
-        self.training = training
-        self.validation = validation
-        self.testing = testing
-        super().__init__()
-
-
 class NeuralNetworkData(Data):
 
     def __init__(self, training, validation, testing, evaluation,
@@ -45,14 +36,14 @@ class NeuralNetworkData(Data):
         }
 
     def get_folder(self):
-        return 'ann'
+        return 'preprocess'
 
     def get_extension(self):
         return 'pkl'
 
     def get_part_path(self, part):
         ext = self.get_extension()
-        return self.get_path()[:-1 - len(ext)] + '.' + ext
+        return self.get_path()[:-1 - len(ext)] + part + '.' + ext
 
     def read_data(self):
         data = {
@@ -70,7 +61,7 @@ class NeuralNetworkData(Data):
             with open(self.get_part_path(part), 'rb') as fh:
                 data = pickle.loads(fh.read())
                 return data['in'], data['out']
-        except (FileNotFoundError, EOFError) as e:
+        except (FileNotFoundError, EOFError):
             return
 
     def write_data(self):
@@ -144,16 +135,13 @@ class SymbolAction(Action):
         setattr(args, self.dest, values)
 
 
-def parse_args():
-    parser = ArgumentParser(description='Load a neural network.')
+def add_parser_args(parser):
     parser.add_argument('-s', '--symbols', type=str, nargs='+',
                         help='symbol(s) to train, validate, and test with')
     parser.add_argument('-y', '--screener', type=str,
                         help='name of Yahoo screener to train, validate, and test with')
-    parser.add_argument('-b', '--buckets', type=int, default=1,
-                        help='stratify data into b buckets')
-    parser.add_argument('--percentages', type=float, nargs='+',
-                        help='stratify data into b buckets')
+    parser.add_argument('--percentages', type=float, nargs='+', default=[0.25, 0.25, 0.25, 0.25],
+                        help='relative size of each data part')
     parser.add_argument('--training_symbols', type=str, nargs='+', action=SymbolAction,
                         help='symbol(s) to train with')
     parser.add_argument('--training_screener', type=str, action=SymbolAction,
@@ -178,17 +166,15 @@ def parse_args():
                         help='end date of data')
     parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
                         help='indices of data_options in params.py to use')
-    parser.add_argument('-t', '--tolerance', type=float, required=True,
+    parser.add_argument('-t', '--tolerance', type=float, default=0.01,
                         help='tolerance to use in optimal trades algorithm')
     parser.add_argument('-d', '--days', type=int, default=0,
                         help='number of prior days of data to use as input per day')
     parser.add_argument('-p', '--print', action='store_true', help='print the data')
     parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
 
-    args = parser.parse_args()
 
-    set_verbosity(args.verbose)
-
+def handle_args(args, parser):
     if not ((args.symbols or args.screener)
             or ((args.training_symbols or args.training_screener)
                 and (args.validation_symbols or args.validation_screener)
@@ -203,9 +189,7 @@ def parse_args():
     if len(args.start) != len(args.end):
         parser.error('number of --start and --end must match')
     elif args.symbols or args.screener:
-        if not args.percentages:
-            parser.error('--percentages is required with -s/--symbols or -y/--screener')
-        elif len(args.percentages) != 4:
+        if len(args.percentages) != 4:
             parser.error('Exactly 4 --percentages required')
         elif not (0.9999 < sum(args.percentages) < 1.0001):
             parser.error('--percentages must sum to 1')
@@ -217,6 +201,8 @@ def parse_args():
             else:
                 args.start = None
                 args.end = None
+
+            args.parts = stratify_parts(args.symbols, args.percentages, args.start, args.end)
     else:
         args.training_symbols = get_symbols(args.training_symbols, args.training_screener, args.limit)
         args.evaluation_symbols = get_symbols(args.evaluation_symbols, args.evaluation_screener, args.limit)
@@ -224,11 +210,11 @@ def parse_args():
         args.evaluation_symbols = get_symbols(args.evaluation_symbols, args.evaluation_screener, args.limit)
         part_order = get_part_order(args)
         try:
-            args.training, args.validation, args.testing, args.evaluation = get_parts(part_order, args)
+            args.parts = get_parts(part_order, args)
         except:
             parser.error('Either 0, 1, or 4 --start and --end is required')
 
-    return args
+    args.options_list = get_options_list(args.options)
 
 
 def get_part_order(args):
@@ -290,7 +276,7 @@ def get_order_specific(l, order):
         raise Exception
 
 
-def stratify_parts(symbols, buckets, percentages, start, end):
+def stratify_parts(symbols, percentages, start, end):
     start = to_date(start or '2002-01-01')
     end = to_date(end or date.today().strftime('%Y-%m-%d'))
     duration = end - start
@@ -309,18 +295,20 @@ def stratify_parts(symbols, buckets, percentages, start, end):
     return make_parts(symbols, symbols, symbols, symbols, starts, ends)
 
 
+def parse_args():
+    parser = ArgumentParser(description='Preprocess neural network data.')
+    add_parser_args(parser)
+    args = parser.parse_args()
+    set_verbosity(args.verbose)
+    handle_args(args, parser)
+    return args
+
+
 def main():
     args = parse_args()
-    options_list = get_options_list(args.options)
-    data = None
-    if args.symbols:
-        parts = stratify_parts(args.symbols, args.buckets, args.percentages, args.start, args.end)
-        data = NeuralNetworkData(*parts, options_list, args.days, args.tolerance).get_data()
-    else:
-        data = NeuralNetworkData(args.training, args.validation, args.testing, args.evaluation,
-                                 options_list, args.days, args.tolerance).get_data()
-    if args.print:
-        log(data, force=True)
+    data = NeuralNetworkData(*args.parts, args.options_list, args.days, args.tolerance).get_data()
+    # log(data, force=args.print)
+    print(data['training'][0].shape)
 
 
 if __name__ == '__main__':

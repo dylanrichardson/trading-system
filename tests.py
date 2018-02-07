@@ -1,11 +1,9 @@
 import unittest
 import shutil
-import os
-from params import PARAMS
 from symbol import SymbolData
 from optimal import *
-from ann import NeuralNetworkData
-from graph import OptimalTradesGraph, SymbolDataGraph
+from preprocess import NeuralNetworkData
+from graph import OptimalTradesGraph
 from screener import yahoo
 
 

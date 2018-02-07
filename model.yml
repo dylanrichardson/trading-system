@@ -1,0 +1,34 @@
+model:
+  - input: in
+  - dense: 128
+  - activation: tanh
+  - dense: 1
+  - activation: tanh
+    name: out
+
+train:
+  data:
+    - pickle: TRAINING
+  epochs: EPOCHS
+  weights: WEIGHTS
+  log: LOG
+
+validate:
+  data:
+    - pickle: VALIDATION
+  weights: WEIGHTS
+
+test:
+  data:
+    - pickle: TESTING
+  weights: WEIGHTS
+
+evaluate:
+  data:
+    - pickle: EVALUATION
+  weights: WEIGHTS
+  destination: OUTPUT
+
+loss:
+  - target: out
+    name: mean_squared_error
