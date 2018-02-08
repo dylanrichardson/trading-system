@@ -1,16 +1,15 @@
-from argparse import ArgumentParser
 from subprocess import call
 from kur.loggers import BinaryLogger
-import pickle
 import preprocess
+from analysis import get_accuracy, get_average_distance
 from utility import *
 from data import Data
 
 
 class NeuralNetwork(Data):
 
-    def __init__(self, training, validation, testing, evaluation,
-                 options_list, days, tolerance, epochs):
+    def __init__(self, training, validation, testing, evaluation, options_list, days,
+                 tolerance, epochs=10, nodes=128, activation='tanh', loss='mean_squared_error'):
         self.training = training
         self.validation = validation
         self.testing = testing
@@ -19,6 +18,9 @@ class NeuralNetwork(Data):
         self.days = days
         self.tolerance = tolerance
         self.epochs = epochs
+        self.nodes= nodes
+        self.activation = activation
+        self.loss = loss
         self.part_data = None
         super().__init__()
 
@@ -63,10 +65,13 @@ class NeuralNetwork(Data):
         call(['kur', 'train', self.get_model_path()])
         # call(['kur', 'test', self.get_model_path()])
         call(['kur', 'evaluate', self.get_model_path()])
+        output = self.get_output()
         return {
             'training_loss': self.get_loss('training_loss_total'),
             'validation_loss': self.get_loss('validation_loss_total'),
-            'output': self.get_output()
+            'output': output,
+            'accuracy': get_accuracy(output),
+            'average_distance': get_average_distance(output)
         }
 
     def get_loss(self, path):
@@ -91,7 +96,7 @@ class NeuralNetwork(Data):
     def get_part_data(self):
         if not self.part_data:
             self.part_data = preprocess.NeuralNetworkData(self.training, self.validation,
-                        self.testing, self.evaluation, self.options_list, self.days, self.tolerance)
+                            self.testing, self.evaluation, self.options_list, self.days, self.tolerance)
         return self.part_data
 
     def get_model(self):
@@ -101,10 +106,11 @@ class NeuralNetwork(Data):
         validation = part_data.get_part_path('validation')
         testing = part_data.get_part_path('testing')
         evaluation = part_data.get_part_path('evaluation')
-        return make_model(training, validation, testing, evaluation, folder, self.epochs)
+        return make_model(training, validation, testing, evaluation, folder,
+                          self.epochs, self.nodes, self.activation, self.loss)
 
 
-def make_model(training, validation, testing, evaluation, folder, epochs):
+def make_model(training, validation, testing, evaluation, folder, epochs, nodes, activation, loss):
     with open('model.yml', 'r') as fh:
         model = fh.read()
         model = model.replace('TRAINING', training)
@@ -115,24 +121,35 @@ def make_model(training, validation, testing, evaluation, folder, epochs):
         model = model.replace('LOG', os.path.join(folder, 'log'))
         model = model.replace('OUTPUT', os.path.join(folder, 'output.pkl'))
         model = model.replace('EPOCHS', str(epochs))
+        model = model.replace('NODES', str(nodes))
+        model = model.replace('ACTIVATION', activation)
+        model = model.replace('LOSS', loss)
         return model
 
 
-def parse_args():
-    parser = ArgumentParser(description='Create a neural network.')
-    parser.add_argument('-e', '--epochs', default=50,
+def add_args(parser):
+    preprocess.add_args(parser)
+    parser.add_argument('-e', '--epochs', type=int, default=50,
                         help='number of epochs to train for')
-    preprocess.add_parser_args(parser)
-    args = parser.parse_args()
-    set_verbosity(args.verbose)
+    parser.add_argument('-n', '--nodes', type=int, default=128,
+                        help='number of nodes per layer')
+    parser.add_argument('-a', '--activation', type=str, default='tanh', choices=['tanh'],
+                        help='type of activation layer')
+    parser.add_argument('--loss', type=str, default='mean_squared_error',
+                        help='type of loss function', choices=['mean_squared_error'])
+
+
+def handle_args(args, parser):
     preprocess.handle_args(args, parser)
-    return args
 
 
 def main():
-    args = parse_args()
-    data = NeuralNetwork(*args.parts, args.options_list, args.days, args.tolerance, args.epochs).get_data()
+    args = parse_args('Create a neural network.', add_args, handle_args)
+    data = NeuralNetwork(*args.parts, args.options_list, args.days, args.tolerance,
+                         args.epochs, args.nodes, args.activation, args.loss).get_data()
     log(data, force=args.print)
+    if args.path:
+        log(data.get_path(), force=args.print)
 
 
 if __name__ == '__main__':

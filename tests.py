@@ -1,8 +1,9 @@
 import unittest
 import shutil
+from neural import NeuralNetwork
 from symbol import SymbolData
 from optimal import *
-from preprocess import NeuralNetworkData
+from preprocess import NeuralNetworkData, stratify_parts
 from graph import OptimalTradesGraph
 from screener import yahoo
 
@@ -98,7 +99,7 @@ class TestOptimal(unittest.TestCase):
 
 
 def remove_last_line(path):
-    file = open(path, 'r+', encoding = 'utf-8')
+    file = open(path, 'r+', encoding='utf-8')
     file.seek(0, os.SEEK_END)
     pos = file.tell() - 1
     while pos > 0 and file.read(1) != "\n":
@@ -109,6 +110,7 @@ def remove_last_line(path):
         file.truncate()
     file.close()
 
+
 def remove_folder(path):
     try:
         shutil.rmtree(path)
@@ -118,42 +120,61 @@ def remove_folder(path):
 
 class TestAllData(unittest.TestCase):
 
-    def test_all(self):
+    def setUp(self):
         PARAMS['data_folder'] = 'test'
         remove_folder('test')
 
+    def tearDown(self):
+        remove_folder('test')
+
+    def test_symbol_data1(self):
         log('\n\nTesting symbol data...\n\n')
-
         SymbolData('AAPL', get_options_list(['sma', 'ema']))
-        SymbolData('AAPL', get_options_list(['macd', 'ema']))
-        data = SymbolData('AAPL', get_options_list(['sma']))
 
+    def test_symbol_data2(self):
+        SymbolData('AAPL', get_options_list(['macd', 'ema']))
+
+    def test_symbol_data3(self):
+        data = SymbolData('AAPL', get_options_list(['sma']))
         log('refreshing data...')
         remove_last_line(data.get_path())
-
         SymbolData('AAPL', get_options_list(['sma', 'ema'])).refresh_data(update_old=True)
 
+    def test_screener(self):
         log('\n\nTesting Yahoo screener...\n\n')
-
         yahoo('day_gainers')
 
+    def test_optimal_trades1(self):
         log('\n\nTesting optimal trade data...\n\n')
-
         OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0.01)
+
+    def test_optimal_trades2(self):
         OptimalTrades('AAPL', '2018-01-01', '2018-01-31', 0)
 
+    def test_optimal_graph1(self):
         log('\n\nTesting graphs...\n\n')
-
         OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-31', 0.01)
+
+    def test_optimal_graph2(self):
         OptimalTradesGraph('AAPL', '2018-01-01', '2018-01-30', 0.01)
 
-
+    def test_preprocess1(self):
         log('\n\nTesting neural network data...\n\n')
+        NeuralNetworkData(*stratify_parts(['AAPL'], [0.25]*4, '2017-01-01', '2018-01-01'),
+                          get_options_list(['sma', 'ema']), 0, 0.01)
 
-        NeuralNetworkData('AAPL', get_options_list(['sma', 'ema']), 0, '2018-01-01', '2018-01-31', 0.01)
-        NeuralNetworkData('AAPL', get_options_list(['macd', 'ema']), 1, '2018-01-01', '2018-01-31', 0.01)
+    def test_preprocess2(self):
+        NeuralNetworkData(*stratify_parts(['AAPL', 'MSFT'], [0.5, 0.3, 0.1, 0.1], '2017-01-01', '2018-01-01'),
+                          get_options_list(['sma']), 5, 0.01)
 
-        remove_folder('test')
+    def test_neural1(self):
+        log('\n\nTesting neural network...\n\n')
+        NeuralNetwork(*stratify_parts(['AAPL'], [0.25]*4, '2017-01-01', '2018-01-01'),
+                      get_options_list(['sma', 'ema']), 0, 0.01)
+
+    def test_neural2(self):
+        NeuralNetwork(*stratify_parts(['AAPL', 'MSFT'], [0.5, 0.3, 0.1, 0.1], '2017-01-01', '2018-01-01'),
+                      get_options_list(['sma']), 5, 0.01)
 
 
 if __name__ == '__main__':

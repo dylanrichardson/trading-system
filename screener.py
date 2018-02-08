@@ -57,25 +57,18 @@ def encode_conditions(conditions):
     return ",".join(map(encode_condition, conditions))
 
 
-def parse_args():
-    parser = ArgumentParser(description='Screen for symbols.')
-    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
+def add_args(parser):
+    parser.add_argument('-y', '--screener', type=str, require=True, help='name of Yahoo screener')
     parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('-p', '--print', action='store_true', help='print the data')
-    parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
 
-    args = parser.parse_args()
 
-    set_verbosity(args.verbose)
-
-    return args
+def handle_args(args, parser):
+    pass
 
 
 def main():
-    args = parse_args()
-    data = None
-    if args.screener:
-        data = ' '.join(get_symbols(None, args.screener, args.limit))
+    args = parse_args('Screen for symbols.', add_args, handle_args)
+    data = ' '.join(get_symbols(None, args.screener, args.limit))
     log(data, force=args.print)
 
 

@@ -1,8 +1,10 @@
+import pickle
+from argparse import ArgumentParser
 from hashlib import sha1
 from collections import Mapping
 from itertools import filterfalse
 import json
-from datetime import datetime, date, timedelta
+from datetime import datetime, timedelta, date as Date
 import numpy as np
 from binascii import hexlify, unhexlify
 import os
@@ -38,6 +40,28 @@ def make_path(path):
     dir_name = os.path.dirname(path)
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
+
+
+def write_pickle(path, data):
+    with open(path, 'wb') as fh:
+        fh.write(pickle.dumps(data))
+
+
+def read_pickle(path):
+    with open(path, 'rb') as fh:
+        return pickle.loads(fh.read())
+
+
+def parse_args(description, add_args, handle_args):
+    parser = ArgumentParser(description=description)
+    add_args(parser)
+    parser.add_argument('-p', '--print', action='store_true', help='print the data')
+    parser.add_argument('-v', '--verbose', action='store_true', help='enable logging')
+    parser.add_argument('--path', action='store_true', help='print the data path')
+    args = parser.parse_args()
+    set_verbosity(args.verbose)
+    handle_args(args, parser)
+    return args
 
 
 def filter_incomplete(d1, d2):
@@ -126,7 +150,7 @@ def extract_column(column, data):
 
 
 def get_latest_weekday():
-    today = date.today()
+    today = Date.today()
     latest_day = today - timedelta(max(4, today.weekday()) - 4)
     return latest_day.strftime('%Y-%m-%d')
 

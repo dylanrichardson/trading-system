@@ -7,7 +7,6 @@ from data import Data
 from utility import *
 from params import PARAMS
 
-
 API_KEY = PARAMS['credentials']['alphavantage']
 DAILY_OPTIONS = PARAMS['data_options']['daily']()
 
@@ -34,13 +33,7 @@ class SymbolData(Data):
         return 'csv'
 
     def write_data(self):
-        with open(self.get_path(), 'w') as outfile:
-            csv_file = csv.writer(outfile)
-            data = self.get_all_data()
-            columns = ['Date'] + get_columns(data)
-            csv_file.writerow(columns)
-            for date in sorted(data):
-                csv_file.writerow(json_to_csv(data, date, columns))
+        write_symbol_data(self.get_all_data(), self.get_path())
 
     def get_all_data(self):
         if not self.all_data:
@@ -55,23 +48,10 @@ class SymbolData(Data):
             return data
 
     def filter_data(self, data):
-        columns = list(map(lambda c: c[1], encrypt_options_list(self.options_list)))
-        data = filter_columns(columns, data)
-        if self.start and self.end:
-            data = filter_dates(data, self.start, self.end)
-        return data
+        return filter_data(data, self.options_list, self.start, self.end)
 
     def read_all_data(self):
-        try:
-            with open(self.get_path(), 'r') as csv_file:
-                reader = csv.DictReader(csv_file)
-                data = {}
-                for row in reader:
-                    new_data = csv_to_json(row)
-                    dict_merge(data, new_data)
-                return data
-        except FileNotFoundError:
-            return {}
+        return read_symbol_data(self.get_path())
 
     def get_new_data(self):
         data = download_symbol_data(self.symbol, self.options_list)
@@ -194,32 +174,7 @@ def get_missing_columns(data, options_list):
     return missing_columns
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Load symbol data.')
-    parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
-    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
-    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
-                        help='indices of data_options in params.py')
-    parser.add_argument('--start', type=str, help='start date of data')
-    parser.add_argument('--end', type=str, help='end date of data')
-    parser.add_argument('-r', '--refresh', action='store_true', help='refresh the data')
-    parser.add_argument('-p', '--print', action='store_true', help='print the data')
-    parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
-
-    args = parser.parse_args()
-
-    set_verbosity(args.verbose)
-
-    if not args.symbols and not args.screener:
-        parser.error('At least one of -s/--symbols or -y/--screener is required')
-
-    return args
-
-
-def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
-    symbols = get_symbols(symbols, screener, limit)
-    options_list = get_options_list(options)
+def get_portfolio_data(symbols, options_list, start, end, refresh):
     data = {}
     for symbol in symbols:
         symbol_data = SymbolData(symbol, options_list, start, end)
@@ -228,10 +183,69 @@ def get_portfolio_data(symbols, screener, options, limit, start, end, refresh):
     return data
 
 
+def write_symbol_data(data, path):
+    with open(path, 'w') as outfile:
+        csv_file = csv.writer(outfile)
+        columns = ['Date'] + get_columns(data)
+        csv_file.writerow(columns)
+        for date in sorted(data):
+            csv_file.writerow(json_to_csv(data, date, columns))
+
+
+def read_symbol_data(path):
+    try:
+        with open(path, 'r') as csv_file:
+            reader = csv.DictReader(csv_file)
+            data = {}
+            for row in reader:
+                new_data = csv_to_json(row)
+                dict_merge(data, new_data)
+            return data
+    except FileNotFoundError:
+        return {}
+
+
+def filter_data(data, options_list, start, end):
+    columns = list(map(lambda c: c[1], encrypt_options_list(options_list)))
+    data = filter_columns(columns, data)
+    if start and end:
+        data = filter_dates(data, start, end)
+    return data
+
+
+def add_symbol_args(parser):
+    parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
+    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
+    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
+    parser.add_argument('--start', type=str, help='start date of data')
+    parser.add_argument('--end', type=str, help='end date of data')
+
+
+def add_args(parser):
+    add_symbol_args(parser)
+    parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
+                        help='indices of data_options in params.py')
+    parser.add_argument('-r', '--refresh', action='store_true', help='refresh the data')
+
+
+def handle_symbol_args(args, parser):
+    if not args.symbols and not args.screener:
+        parser.error('At least one of -s/--symbols or -y/--screener is required')
+    args.symbols = get_symbols(args.symbols, args.screener, args.limit)
+
+
+def handle_options_args(args, parser):
+    args.options_list = get_options_list(args.options)
+
+
+def handle_args(args, parser):
+    handle_symbol_args(args, parser)
+    handle_options_args(args, parser)
+
+
 def main():
-    args = parse_args()
-    data = get_portfolio_data(args.symbols, args.screener, args.options, args.limit,
-                        args.start, args.end, args.refresh)
+    args = parse_args('Load symbol data.', add_args, handle_args)
+    data = get_portfolio_data(args.symbols, args.options_list, args.start, args.end, args.refresh)
     log(data, force=args.print)
 
 

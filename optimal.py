@@ -1,8 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
-from argparse import ArgumentParser
 from data import Data
 from utility import *
-from symbol import SymbolCloseData
+from symbol import SymbolCloseData, add_symbol_args, handle_symbol_args
 
 BUY = 1
 SELL = -1
@@ -27,25 +26,27 @@ class OptimalTrades(Data):
 
     def get_new_data(self):
         log('Calculating optimal trades...')
-        data = SymbolCloseData(self.symbol, self.start, self.end).get_data()
-        return calc_trades(data, self.tolerance)
+        return get_optimal_trades(self.symbol, self.start, self.end, self.tolerance)
 
     def get_folder(self):
         return 'optimal'
 
     def get_extension(self):
-        return 'json'
+        return 'pkl'
 
     def read_data(self):
         try:
-            with open(self.get_path(), 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
+            return read_pickle(self.get_path())
+        except (FileNotFoundError, EOFError):
             return
 
     def write_data(self):
-        with open(self.get_path(), 'w') as fh:
-            json.dump(self.get_data(), fh)
+        write_pickle(self.get_path(), self.get_data())
+
+
+def get_optimal_trades(symbol, start, end, tolerance):
+    data = SymbolCloseData(symbol, start, end).get_data()
+    return calc_trades(data, tolerance)
 
 
 def calc_trades(data, tolerance):
@@ -137,41 +138,29 @@ def should_buy_first(prices, tolerance):
                 return False
 
 
-def parse_args():
-    parser = ArgumentParser(description='Load optimal trades.')
-    parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
-    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
-    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('-t', '--tolerance', type=float, required=True,
-                        help='tolerance to use in algorithm')
-    parser.add_argument('--start', type=str, help='start date of data')
-    parser.add_argument('--end', type=str, help='end date of data')
-    parser.add_argument('-p', '--print', action='store_true', help='print the data')
-    parser.add_argument('-v', '--verbose', action='store_true', help='log debug messages')
-
-    args = parser.parse_args()
-
-    set_verbosity(args.verbose)
-
-    if not args.symbols and not args.screener:
-        parser.error('At least one of --symbols or --screener is required')
-
-    return args
-
-
-def get_optimal_trades(symbols, screener, limit, start, end, tolerance):
-    symbols = get_symbols(symbols, screener, limit)
+def get_optimal_trades_dict(symbols, start, end, tolerance):
     trades = {}
     for symbol in symbols:
         trades[symbol] = OptimalTrades(symbol, start, end, tolerance).get_data()
     return trades
 
 
+def add_args(parser):
+    add_symbol_args(parser)
+    parser.add_argument('-t', '--tolerance', type=float, required=True,
+                        help='tolerance to use in algorithm')
+
+
+def handle_args(args, parser):
+    handle_symbol_args(args, parser)
+
+
 def main():
-    args = parse_args()
-    trades = get_optimal_trades(args.symbols, args.screener, args.limit,
-                            args.start, args.end, args.tolerance)
-    log(trades, force=args.print)
+    args = parse_args('Load optimal trades.', add_args, handle_args)
+    data = get_optimal_trades_dict(args.symbols, args.start, args.end, args.tolerance)
+    log(data, force=args.print)
+    if args.path:
+        log(data.get_path(), force=args.print)
 
 
 if __name__ == '__main__':

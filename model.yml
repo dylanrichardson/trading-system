@@ -1,9 +1,9 @@
 model:
   - input: in
-  - dense: 128
-  - activation: tanh
+  - dense: NODES
+  - activation: ACTIVATION
   - dense: 1
-  - activation: tanh
+  - activation: ACTIVATION
     name: out
 
 train:
@@ -31,4 +31,4 @@ evaluate:
 
 loss:
   - target: out
-    name: mean_squared_error
+    name: LOSS
