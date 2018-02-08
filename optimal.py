@@ -9,20 +9,12 @@ SELL = -1
 
 class OptimalTrades(Data):
 
-    def __init__(self, symbol, start, end, tolerance):
-        self.symbol = symbol
-        self.start = start
-        self.end = end
-        self.tolerance = tolerance
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'symbol': self.symbol,
-            'start': self.start,
-            'end': self.end,
-            'tolerance': self.tolerance
-        }
+    def __init__(self, **params):
+        self.symbol = params['symbol']
+        self.start = params.get('start', None)
+        self.end = params.get('end', None)
+        self.tolerance = params.get('tolerance', 0.01)
+        super().__init__(**params)
 
     def get_new_data(self):
         log('Calculating optimal trades...')
@@ -31,22 +23,19 @@ class OptimalTrades(Data):
     def get_folder(self):
         return 'optimal'
 
-    def get_extension(self):
-        return 'pkl'
+    def get_data_path(self):
+        return self.get_path('data.pkl')
 
     def read_data(self):
-        try:
-            return read_pickle(self.get_path())
-        except (FileNotFoundError, EOFError):
-            return
+        return read_pickle(self.get_data_path())
 
     def write_data(self):
-        write_pickle(self.get_path(), self.get_data())
+        write_pickle(self.get_data_path(), self.get_data())
 
 
 def get_optimal_trades(symbol, start, end, tolerance):
-    data = SymbolCloseData(symbol, start, end).get_data()
-    return calc_trades(data, tolerance)
+    data = SymbolCloseData(symbol=symbol, start=start, end=end).get_data()
+    return calc_trades(data, tolerance=tolerance)
 
 
 def calc_trades(data, tolerance):
@@ -141,13 +130,13 @@ def should_buy_first(prices, tolerance):
 def get_optimal_trades_dict(symbols, start, end, tolerance):
     trades = {}
     for symbol in symbols:
-        trades[symbol] = OptimalTrades(symbol, start, end, tolerance).get_data()
+        trades[symbol] = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
     return trades
 
 
 def add_args(parser):
     add_symbol_args(parser)
-    parser.add_argument('-t', '--tolerance', type=float, required=True,
+    parser.add_argument('-t', '--tolerance', type=float, default=0.01,
                         help='tolerance to use in algorithm')
 
 
@@ -160,7 +149,7 @@ def main():
     data = get_optimal_trades_dict(args.symbols, args.start, args.end, args.tolerance)
     log(data, force=args.print)
     if args.path:
-        log(data.get_path(), force=args.print)
+        [log(k, v.get_path(), force=args.print) for k, v in data.items()]
 
 
 if __name__ == '__main__':

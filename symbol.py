@@ -2,7 +2,6 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 from urllib.parse import urlencode
 import requests
 import csv
-import argparse
 from data import Data
 from utility import *
 from params import PARAMS
@@ -13,27 +12,22 @@ DAILY_OPTIONS = PARAMS['data_options']['daily']()
 
 class SymbolData(Data):
 
-    def __init__(self, symbol, options_list, start=None, end=None):
-        self.symbol = symbol
-        self.options_list = options_list
-        self.start = start
-        self.end = end
+    def __init__(self, **params):
+        self.symbol = params['symbol']
+        self.options_list = params['options_list']
+        self.start = params.get('start', None)
+        self.end = params.get('end', None)
         self.all_data = {}
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'symbol': self.symbol
-        }
+        super().__init__(symbol=self.symbol)
 
     def get_folder(self):
         return 'symbol'
 
-    def get_extension(self):
-        return 'csv'
+    def get_symbol_path(self):
+        return self.get_path(self.symbol + '.csv')
 
     def write_data(self):
-        write_symbol_data(self.get_all_data(), self.get_path())
+        write_symbol_data(self.get_all_data(), self.get_symbol_path())
 
     def get_all_data(self):
         if not self.all_data:
@@ -51,7 +45,7 @@ class SymbolData(Data):
         return filter_data(data, self.options_list, self.start, self.end)
 
     def read_all_data(self):
-        return read_symbol_data(self.get_path())
+        return read_symbol_data(self.get_symbol_path())
 
     def get_new_data(self):
         data = download_symbol_data(self.symbol, self.options_list)
@@ -62,7 +56,6 @@ class SymbolData(Data):
         missing_columns = get_missing_columns(self.all_data, self.options_list)
         if update_old:
             missing_columns += get_old_columns(self.all_data)
-        # print('missing %s columns' % len(missing_columns))
         missing_options = columns_to_options(missing_columns)
         if missing_options:
             new_data = download_symbol_data(self.symbol, missing_options)
@@ -72,9 +65,9 @@ class SymbolData(Data):
 
 class SymbolCloseData(SymbolData):
 
-    def __init__(self, symbol, start=None, end=None):
+    def __init__(self, **params):
         self.data = None
-        super().__init__(symbol, [DAILY_OPTIONS], start, end)
+        super().__init__(options_list=[DAILY_OPTIONS], **params)
 
     def get_data(self):
         if not self.data:
@@ -177,7 +170,7 @@ def get_missing_columns(data, options_list):
 def get_portfolio_data(symbols, options_list, start, end, refresh):
     data = {}
     for symbol in symbols:
-        symbol_data = SymbolData(symbol, options_list, start, end)
+        symbol_data = SymbolData(symbol=symbol, options_list=options_list, start=start, end=end)
         symbol_data.refresh_data(update_old=refresh)
         data[symbol] = symbol_data.get_data()
     return data
@@ -247,6 +240,8 @@ def main():
     args = parse_args('Load symbol data.', add_args, handle_args)
     data = get_portfolio_data(args.symbols, args.options_list, args.start, args.end, args.refresh)
     log(data, force=args.print)
+    if args.path:
+        [log(k, v.get_path(), force=args.print) for k, v in data.items()]
 
 
 if __name__ == '__main__':

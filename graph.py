@@ -1,10 +1,6 @@
 import optimal
 import symbol
-
 import matplotlib.pyplot as plt
-import pickle
-from argparse import ArgumentParser
-
 import neural
 from data import Data
 from optimal import OptimalTrades
@@ -17,20 +13,14 @@ class Graph(Data):
     def get_folder(self):
         return 'graph'
 
-    def get_extension(self):
-        return ''
-
     def get_fig_path(self):
-        return self.get_path() + 'pkl'
+        return self.get_path('graph.pkl')
 
     def get_pic_path(self):
-        return self.get_path() + 'png'
+        return self.get_path('graph.png')
 
     def read_data(self):
-        try:
-            return read_pickle(self.get_fig_path())
-        except FileNotFoundError:
-            return
+        return read_pickle(self.get_fig_path())
 
     def write_data(self):
         fig = self.get_data()
@@ -44,29 +34,21 @@ class Graph(Data):
         log('Graphing...')
         return self.make_figure()
 
-    def make_figure(self):
-        raise NotImplementedError()
-
     def show(self):
         self.get_figure().show()
+
+    def make_figure(self):
+        raise NotImplementedError()
 
 
 class SymbolDataGraph(Graph):
 
-    def __init__(self, symbol, options_list, start, end):
-        self.symbol = symbol
-        self.options_list = options_list
-        self.start = start
-        self.end = end
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'symbol': self.symbol,
-            'options_list': self.options_list,
-            'start': self.start,
-            'end': self.end
-        }
+    def __init__(self, **params):
+        self.symbol = params['symbol']
+        self.options_list = params['options_list']
+        self.start = params.get('start', None)
+        self.end = params.get('end', None)
+        super().__init__(**params)
 
     def make_figure(self):
         log('Making new symbol data graph...')
@@ -75,27 +57,19 @@ class SymbolDataGraph(Graph):
 
 class OptimalTradesGraph(Graph):
 
-    def __init__(self, symbol, start, end, tolerance):
-        self.symbol = symbol
-        self.start = start
-        self.end = end
-        self.tolerance = tolerance
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'symbol': self.symbol,
-            'start': self.start,
-            'end': self.end,
-            'tolerance': self.tolerance
-        }
+    def __init__(self, **params):
+        self.symbol = params['symbol']
+        self.tolerance = params.get('tolerance', 0.01)
+        self.start = params.get('start', None)
+        self.end = params.get('end', None)
+        super().__init__(**params)
 
     def make_figure(self):
         return graph_optimal_trades(self.symbol, self.start, self.end, self.tolerance)
 
 
 def graph_symbol_data(symbol, options_list, start, end):
-    data = SymbolData(symbol, options_list, start, end).get_data()
+    data = SymbolData(symbol=symbol, options_list=options_list, start=start, end=end).get_data()
     columns = get_columns(data)
     data_list = [extract_column(col, data) for col in columns]
 
@@ -109,8 +83,8 @@ def graph_symbol_data(symbol, options_list, start, end):
 
 
 def graph_optimal_trades(symbol, start, end, tolerance):
-    prices = SymbolCloseData(symbol, start, end).get_data()
-    trades = OptimalTrades(symbol, start, end, tolerance).get_data()
+    prices = SymbolCloseData(symbol=symbol, start=start, end=end).get_data()
+    trades = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
 
     buy_sizes = {k: 20 * v for k, v in trades.items() if v > 0}
     buy_prices = {k: prices[k] for k in buy_sizes}
@@ -133,14 +107,16 @@ def get_symbol_data_graphs(symbols, options_indices, start, end):
     options_list = get_options_list(options_indices)
     graphs = {}
     for symbol in symbols:
-        graphs[symbol] = SymbolDataGraph(symbol, options_list, start, end).get_figure()
+        graphs[symbol] = SymbolDataGraph(symbol=symbol, option_list=options_list,
+                                         start=start, end=end).get_figure()
     return graphs
 
 
 def get_optimal_trades_graphs(symbols, start, end, tolerance):
     graphs = {}
     for symbol in symbols:
-        graphs[symbol] = OptimalTradesGraph(symbol, start, end, tolerance).get_figure()
+        graphs[symbol] = OptimalTradesGraph(symbol=symbol, tolerance=tolerance,
+                                            start=start, end=end).get_figure()
     return graphs
 
 

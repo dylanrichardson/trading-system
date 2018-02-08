@@ -1,5 +1,5 @@
 from argparse import Action
-from data import Data
+from data import Data, DataException
 from symbol import SymbolData, handle_options_args
 from optimal import OptimalTrades
 from utility import *
@@ -9,50 +9,32 @@ DATA_PARTS = ['training', 'validation', 'testing', 'evaluation']
 
 class NeuralNetworkData(Data):
 
-    def __init__(self, training, validation, testing, evaluation,
-                 options_list, days, tolerance):
-        validate_parts([training, validation, testing, evaluation])
-        self.training = training
-        self.validation = validation
-        self.testing = testing
-        self.evaluation = evaluation
-        self.options_list = options_list
-        self.days = days
-        self.tolerance = tolerance
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'training': self.training,
-            'validation': self.validation,
-            'testing': self.testing,
-            'evaluation': self.evaluation,
-            'options_list': self.options_list,
-            'days': self.days,
-            'tolerance': self.tolerance
-        }
+    def __init__(self, **params):
+        self.training = params['training']
+        self.validation = params['validation']
+        self.testing = params['testing']
+        self.evaluation = params['evaluation']
+        self.options_list = params['options_list']
+        self.days = params.get('days', 0)
+        self.tolerance = params.get('tolerance', 0.01)
+        validate_parts([params[p] for p in DATA_PARTS])
+        super().__init__(**params)
 
     def get_folder(self):
         return 'preprocess'
 
-    def get_extension(self):
-        return 'pkl'
-
-    def get_base_path(self):
-        return self.get_path()[:-1 - len(self.get_extension())]
-
     def get_part_path(self, part):
-        return os.path.join(self.get_base_path(), part + '.' + self.get_extension())
+        return self.get_path(part + '.pkl')
 
     def read_data(self):
-        return read_preprocess(self.get_base_path())
+        return read_preprocess(self.get_path())
 
     def write_data(self):
-        write_preprocess(self.get_base_path(), self.get_data())
+        write_preprocess(self.get_path(), self.get_data())
 
     def get_new_data(self):
         log('Preprocessing neural network data...')
-        return {p: self.get_new_data_part(self.get_params()[p]) for p in DATA_PARTS}
+        return {p: self.get_new_data_part(self.params[p]) for p in DATA_PARTS}
 
     def get_new_data_part(self, part):
         return get_data_part(part['symbols'], self.options_list, part['start'],
@@ -60,18 +42,15 @@ class NeuralNetworkData(Data):
 
 
 def read_preprocess_part(path):
-    try:
-        data = read_pickle(path)
+    data = read_pickle(path)
+    if data:
         return data['in'], data['out']
-    except (FileNotFoundError, EOFError):
-        return
 
 
-def read_preprocess(path):
-    data = {k: read_preprocess_part(os.path.join(path, k + '.pkl')) for k in DATA_PARTS}
-    if None in data.values():
-        return {}
-    return data
+def read_preprocess(folder):
+    data = {k: read_preprocess_part(os.path.join(folder, k + '.pkl')) for k in DATA_PARTS}
+    if None not in data.values():
+        return data
 
 
 def write_data_part(folder, data, part):
@@ -89,8 +68,11 @@ def get_data_part(symbols, options_list, start, end, days, tolerance):
     matrix_in = None
     matrix_out = None
     for symbol in symbols:
-        symbol_data = SymbolData(symbol, options_list).get_data()
-        trades = OptimalTrades(symbol, start, end, tolerance).get_data()
+        symbol_data = SymbolData(symbol=symbol, options_list=options_list).get_data()
+        try:
+            trades = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
+        except DataException:
+            trades = {}
         data_in, data_out = filter_incomplete(symbol_data, trades)
         data_in = add_prior_days(data_in, days, symbol_data)
         new_in = json_to_matrix(data_in)
@@ -105,6 +87,8 @@ def get_data_part(symbols, options_list, start, end, days, tolerance):
 
 
 def add_prior_days(data, days, full_data):
+    if not data:
+        return data
     new_data = {}
     date_list = list(enumerate(sorted(data)))
     full_data_sorted = sorted(full_data)
@@ -151,27 +135,28 @@ def get_part_order(args):
 
 
 def make_parts(training_symbols, validation_symbols, testing_symbols, evaluation_symbols, start, end):
-    training = {
-        'symbols': training_symbols,
-        'start': start[0],
-        'end': end[0]
+    return {
+        'training': {
+            'symbols': training_symbols,
+            'start': start[0],
+            'end': end[0]
+        },
+        'validation': {
+            'symbols': validation_symbols,
+            'start': start[1],
+            'end': end[1]
+        },
+        'testing': {
+            'symbols': testing_symbols,
+            'start': start[2],
+            'end': end[2]
+        },
+        'evaluation': {
+            'symbols': evaluation_symbols,
+            'start': start[3],
+            'end': end[3]
+        }
     }
-    validation = {
-        'symbols': validation_symbols,
-        'start': start[1],
-        'end': end[1]
-    }
-    testing = {
-        'symbols': testing_symbols,
-        'start': start[2],
-        'end': end[2]
-    }
-    evaluation = {
-        'symbols': evaluation_symbols,
-        'start': start[3],
-        'end': end[3]
-    }
-    return training, validation, testing, evaluation
 
 
 def get_parts(part_order, args):
@@ -309,7 +294,8 @@ def handle_args(args, parser):
 
 def main():
     args = parse_args('Preprocess neural network data.', add_args, handle_args)
-    data = NeuralNetworkData(*args.parts, args.options_list, args.days, args.tolerance).get_data()
+    data = NeuralNetworkData(**args.parts, options_list=args.options_list, days=args.days,
+                             tolerance=args.tolerance).get_data()
     log(data, force=args.print)
     if args.path:
         log(data.get_path(), force=args.print)

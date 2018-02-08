@@ -48,8 +48,11 @@ def write_pickle(path, data):
 
 
 def read_pickle(path):
-    with open(path, 'rb') as fh:
-        return pickle.loads(fh.read())
+    try:
+        with open(path, 'rb') as fh:
+            return pickle.loads(fh.read())
+    except (FileNotFoundError, EOFError):
+        return
 
 
 def parse_args(description, add_args, handle_args):

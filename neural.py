@@ -8,85 +8,40 @@ from data import Data
 
 class NeuralNetwork(Data):
 
-    def __init__(self, training, validation, testing, evaluation, options_list, days,
-                 tolerance, epochs=10, nodes=128, activation='tanh', loss='mean_squared_error'):
-        self.training = training
-        self.validation = validation
-        self.testing = testing
-        self.evaluation = evaluation
-        self.options_list = options_list
-        self.days = days
-        self.tolerance = tolerance
-        self.epochs = epochs
-        self.nodes= nodes
-        self.activation = activation
-        self.loss = loss
+    def __init__(self, **params):
+        self.training = params['training']
+        self.validation = params['validation']
+        self.testing = params['testing']
+        self.evaluation = params['evaluation']
+        self.options_list = params['options_list']
+        self.days = params.get('days', 0)
+        self.tolerance = params.get('tolerance', 0.01)
+        self.epochs = params.get('epochs', 10)
+        self.nodes = params.get('nodes', 128)
+        self.activation = params.get('activation', 'tanh')
+        self.loss = params.get('loss', 'mean_squared_error')
         self.part_data = None
-        super().__init__()
-
-    def get_params(self):
-        return {
-            'training': self.training,
-            'validation': self.validation,
-            'testing': self.testing,
-            'evaluation': self.evaluation,
-            'options_list': self.options_list,
-            'days': self.days,
-            'tolerance': self.tolerance,
-            'epochs': self.epochs
-        }
+        super().__init__(**params)
 
     def get_folder(self):
         return 'neural'
 
-    def get_extension(self):
-        return ''
-
-    def get_path(self):
-        return super().get_path()[:-1]
-
     def read_data(self):
-        try:
-            with open(self.get_data_path(), 'rb') as fh:
-                return pickle.loads(fh.read())
-        except (FileNotFoundError, EOFError):
-            return
+        read_pickle(self.get_data_path())
 
     def write_data(self):
-        with open(self.get_data_path(), 'wb') as fh:
-            fh.write(pickle.dumps(self.get_data()))
+        write_pickle(self.get_data_path(), self.get_data())
 
     def get_data_path(self):
-        return os.path.join(self.get_path(), 'data.pkl')
+        return self.get_path('data.pkl')
+
+    def get_model_path(self):
+        return self.get_path('model.yml')
 
     def get_new_data(self):
         log('Training neural network...')
         self.make_model()
-        call(['kur', 'train', self.get_model_path()])
-        # call(['kur', 'test', self.get_model_path()])
-        call(['kur', 'evaluate', self.get_model_path()])
-        output = self.get_output()
-        return {
-            'training_loss': self.get_loss('training_loss_total'),
-            'validation_loss': self.get_loss('validation_loss_total'),
-            'output': output,
-            'accuracy': get_accuracy(output),
-            'average_distance': get_average_distance(output)
-        }
-
-    def get_loss(self, path):
-        return BinaryLogger.load_column(self.get_log_path(), path)
-
-    def get_log_path(self):
-        return os.path.join(self.get_path(), 'log')
-
-    def get_output(self):
-        path = os.path.join(self.get_path(), 'output.pkl')
-        with open(path, 'rb') as fh:
-            return pickle.loads(fh.read())
-
-    def get_model_path(self):
-        return os.path.join(self.get_path(), 'model.yml')
+        return train_neural_network(self.get_path())
 
     def make_model(self):
         make_path(self.get_model_path())
@@ -95,8 +50,10 @@ class NeuralNetwork(Data):
 
     def get_part_data(self):
         if not self.part_data:
-            self.part_data = preprocess.NeuralNetworkData(self.training, self.validation,
-                            self.testing, self.evaluation, self.options_list, self.days, self.tolerance)
+            self.part_data = preprocess.NeuralNetworkData(training=self.training, validation=self.validation,
+                                                          testing=self.testing, evaluation=self.evaluation,
+                                                          options_list=self.options_list, days=self.days,
+                                                          tolerance=self.tolerance)
         return self.part_data
 
     def get_model(self):
@@ -127,6 +84,31 @@ def make_model(training, validation, testing, evaluation, folder, epochs, nodes,
         return model
 
 
+def train_neural_network(folder):
+    model_path = os.path.join(folder, 'model.yml')
+    log_path = os.path.join(folder, 'log')
+    output_path = os.path.join(folder, 'output.pkl')
+    if PARAMS['verbose']:
+        std_out = []
+    else:
+        std_out = ['>', 'out']
+    call(['kur', 'train', model_path] + std_out)
+    # call(['kur', 'test', self.get_model_path()])
+    call(['kur', 'evaluate', model_path] + std_out)
+    output = read_pickle(output_path)
+    return {
+        'training_loss': get_loss(log_path, 'training_loss_total'),
+        'validation_loss': get_loss(log_path, 'validation_loss_total'),
+        'output': output,
+        'accuracy': get_accuracy(output),
+        'average_distance': get_average_distance(output)
+    }
+
+
+def get_loss(log_path, path):
+    return BinaryLogger.load_column(log_path, path)
+
+
 def add_args(parser):
     preprocess.add_args(parser)
     parser.add_argument('-e', '--epochs', type=int, default=50,
@@ -145,8 +127,9 @@ def handle_args(args, parser):
 
 def main():
     args = parse_args('Create a neural network.', add_args, handle_args)
-    data = NeuralNetwork(*args.parts, args.options_list, args.days, args.tolerance,
-                         args.epochs, args.nodes, args.activation, args.loss).get_data()
+    data = NeuralNetwork(**args.parts, options_list=args.options_list, days=args.days,
+                         tolerance=args.tolerance, epochs=args.epochs, nodes=args.nodes,
+                         activation=args.activation, loss=args.loss).get_data()
     log(data, force=args.print)
     if args.path:
         log(data.get_path(), force=args.print)
