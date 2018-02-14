@@ -19,6 +19,8 @@ class SymbolData(Data):
         self.end = params.get('end', None)
         self.all_data = {}
         super().__init__(symbol=self.symbol)
+        self.params = params
+        self.write_params()
 
     def get_folder(self):
         return 'symbol'
@@ -170,9 +172,8 @@ def get_missing_columns(data, options_list):
 def get_portfolio_data(symbols, options_list, start, end, refresh):
     data = {}
     for symbol in symbols:
-        symbol_data = SymbolData(symbol=symbol, options_list=options_list, start=start, end=end)
-        symbol_data.refresh_data(update_old=refresh)
-        data[symbol] = symbol_data.get_data()
+        data[symbol] = SymbolData(symbol=symbol, options_list=options_list, start=start, end=end)
+        data[symbol].refresh_data(update_old=refresh)
     return data
 
 
@@ -203,6 +204,7 @@ def filter_data(data, options_list, start, end):
     data = filter_columns(columns, data)
     if start and end:
         data = filter_dates(data, start, end)
+    data = filter_incomplete(data)
     return data
 
 
@@ -239,7 +241,7 @@ def handle_args(args, parser):
 def main():
     args = parse_args('Load symbol data.', add_args, handle_args)
     data = get_portfolio_data(args.symbols, args.options_list, args.start, args.end, args.refresh)
-    log(data, force=args.print)
+    log({k: v.get_data() for k, v in data.items()}, force=args.print)
     if args.path:
         [log(k, v.get_path(), force=args.print) for k, v in data.items()]
 

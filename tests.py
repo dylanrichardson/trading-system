@@ -162,21 +162,21 @@ class TestAllData(unittest.TestCase):
 
     def test_preprocess1(self):
         log('\n\nTesting neural network data...\n\n')
-        NeuralNetworkData(**stratify_parts(['AAPL'], [0.25]*4, '2017-01-01', '2018-01-01'),
+        NeuralNetworkData(**stratify_parts(['AAPL'], [0.25]*3, '2017-01-01', '2018-01-01'),
                           options_list=get_options_list(['sma', 'ema']))
 
     def test_preprocess2(self):
-        NeuralNetworkData(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.3, 0.1, 0.1], '2017-01-01', '2018-01-01'),
+        NeuralNetworkData(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.3, 0.1], '2017-01-01', '2018-01-01'),
                           options_list=get_options_list(['sma']), days=5)
 
     def test_neural1(self):
         log('\n\nTesting neural network...\n\n')
-        NeuralNetwork(**stratify_parts(['AAPL'], [0.25]*4, '2017-01-01', '2018-01-01'),
+        NeuralNetwork(**stratify_parts(['AAPL'], [0.25]*3, '2017-01-01', '2018-01-01'),
                       options_list=get_options_list(['sma', 'ema']))
 
     def test_neural2(self):
-        NeuralNetwork(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.3, 0.1, 0.1], '2017-01-01', '2018-01-01'),
-                      options_list=get_options_list(['sma']), days=5, tolerance=0.1)
+        NeuralNetwork(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.1, 0.3], '2017-01-01', '2018-01-01'),
+                      options_list=get_options_list(['sma']), days=5, tolerance=0.05)
 
 
 if __name__ == '__main__':

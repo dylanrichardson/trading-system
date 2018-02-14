@@ -67,10 +67,15 @@ def parse_args(description, add_args, handle_args):
     return args
 
 
-def filter_incomplete(d1, d2):
-    d1 = {k: v for k, v in d1.items() if complete(v)}
-    d2 = {k: v for k, v in d2.items() if k in d1 and complete(v)}
+def filter_incomplete(d):
+    return {k: v for k, v in d.items() if complete(v)}
+
+
+def filter_matching(d1, d2):
+    d1 = filter_incomplete(d1)
+    d2 = filter_incomplete(d2)
     d1 = {k: v for k, v in d1.items() if k in d2}
+    d2 = {k: v for k, v in d2.items() if k in d1}
     return d1, d2
 
 

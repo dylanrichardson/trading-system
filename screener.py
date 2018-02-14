@@ -58,7 +58,7 @@ def encode_conditions(conditions):
 
 
 def add_args(parser):
-    parser.add_argument('-y', '--screener', type=str, require=True, help='name of Yahoo screener')
+    parser.add_argument('screener', type=str, help='name of Yahoo screener')
     parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
 
 

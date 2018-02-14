@@ -1,5 +1,10 @@
+import logging
 from subprocess import call
 from kur.loggers import BinaryLogger
+from kur import Kurfile
+from kur.engine import JinjaEngine
+from kur.utils import DisableLogging
+
 import preprocess
 from analysis import get_accuracy, get_average_distance
 from utility import *
@@ -11,7 +16,6 @@ class NeuralNetwork(Data):
     def __init__(self, **params):
         self.training = params['training']
         self.validation = params['validation']
-        self.testing = params['testing']
         self.evaluation = params['evaluation']
         self.options_list = params['options_list']
         self.days = params.get('days', 0)
@@ -27,7 +31,7 @@ class NeuralNetwork(Data):
         return 'neural'
 
     def read_data(self):
-        read_pickle(self.get_data_path())
+        return read_pickle(self.get_data_path())
 
     def write_data(self):
         write_pickle(self.get_data_path(), self.get_data())
@@ -51,9 +55,8 @@ class NeuralNetwork(Data):
     def get_part_data(self):
         if not self.part_data:
             self.part_data = preprocess.NeuralNetworkData(training=self.training, validation=self.validation,
-                                                          testing=self.testing, evaluation=self.evaluation,
-                                                          options_list=self.options_list, days=self.days,
-                                                          tolerance=self.tolerance)
+                                                          evaluation=self.evaluation, options_list=self.options_list,
+                                                          days=self.days, tolerance=self.tolerance)
         return self.part_data
 
     def get_model(self):
@@ -61,18 +64,27 @@ class NeuralNetwork(Data):
         part_data = self.get_part_data()
         training = part_data.get_part_path('training')
         validation = part_data.get_part_path('validation')
-        testing = part_data.get_part_path('testing')
         evaluation = part_data.get_part_path('evaluation')
-        return make_model(training, validation, testing, evaluation, folder,
-                          self.epochs, self.nodes, self.activation, self.loss)
+        return make_model(training, validation, evaluation, folder, self.epochs,
+                          self.nodes, self.activation, self.loss, part_data.get_shape())
+
+    def predict(self, data):
+        kurfile = Kurfile(self.get_model_path(), JinjaEngine())
+        kurfile.parse()
+        model = kurfile.get_model()
+        with DisableLogging(logging.WARNING):
+            model.backend.compile(model)
+        model.restore(self.get_path('weights'))
+        pdf, metrics = model.backend.evaluate(model, data={'in': np.array([data])})
+        prediction = pdf['out'][0][0]
+        return prediction
 
 
-def make_model(training, validation, testing, evaluation, folder, epochs, nodes, activation, loss):
+def make_model(training, validation, evaluation, folder, epochs, nodes, activation, loss, shape):
     with open('model.yml', 'r') as fh:
         model = fh.read()
         model = model.replace('TRAINING', training)
         model = model.replace('VALIDATION', validation)
-        model = model.replace('TESTING', testing)
         model = model.replace('EVALUATION', evaluation)
         model = model.replace('WEIGHTS', os.path.join(folder, 'weights'))
         model = model.replace('LOG', os.path.join(folder, 'log'))
@@ -81,6 +93,7 @@ def make_model(training, validation, testing, evaluation, folder, epochs, nodes,
         model = model.replace('NODES', str(nodes))
         model = model.replace('ACTIVATION', activation)
         model = model.replace('LOSS', loss)
+        model = model.replace('SHAPE', str(shape))
         return model
 
 
@@ -93,7 +106,6 @@ def train_neural_network(folder):
     else:
         std_out = ['>', 'out']
     call(['kur', 'train', model_path] + std_out)
-    # call(['kur', 'test', self.get_model_path()])
     call(['kur', 'evaluate', model_path] + std_out)
     output = read_pickle(output_path)
     return {

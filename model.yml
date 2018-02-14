@@ -1,5 +1,7 @@
 model:
-  - input: in
+  - input:
+      shape: (SHAPE,)
+    name: in
   - dense: NODES
   - activation: ACTIVATION
   - dense: 1
@@ -16,11 +18,6 @@ train:
 validate:
   data:
     - pickle: VALIDATION
-  weights: WEIGHTS
-
-test:
-  data:
-    - pickle: TESTING
   weights: WEIGHTS
 
 evaluate:

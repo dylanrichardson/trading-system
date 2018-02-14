@@ -1,5 +1,3 @@
-
-
 def daily():
     return {
         'function': 'TIME_SERIES_DAILY',
@@ -48,7 +46,7 @@ def macd(fast=12, slow=26, signal=9):
     }
 
 
-def stoch(fastk, slowk, slowd, kma, dma):
+def stoch(fastk=5, slowk=3, slowd=3, kma=0, dma=0):
     return {
         'function': 'STOCH',
         'columns': ['SlowD', 'SlowK'],
@@ -74,12 +72,12 @@ def rsi(period=14):
 
 def adx(period=14):
     return {
-       'function': 'ADX',
-       'columns': ['ADX'],
-       'interval': 'daily',
-       'series_type': 'close',
-       'time_period': period
-   }
+        'function': 'ADX',
+        'columns': ['ADX'],
+        'interval': 'daily',
+        'series_type': 'close',
+        'time_period': period
+    }
 
 
 def cci(period=14):
@@ -99,6 +97,7 @@ def aroon(period=14):
         'interval': 'daily',
         'time_period': period
     }
+
 
 def bbands(period=14, ndev=2, ma=0):
     return {

@@ -4,7 +4,8 @@ from symbol import SymbolData, handle_options_args
 from optimal import OptimalTrades
 from utility import *
 
-DATA_PARTS = ['training', 'validation', 'testing', 'evaluation']
+DATA_PARTS = ['training', 'validation', 'evaluation']
+NUM_PARTS = len(DATA_PARTS)
 
 
 class NeuralNetworkData(Data):
@@ -12,7 +13,6 @@ class NeuralNetworkData(Data):
     def __init__(self, **params):
         self.training = params['training']
         self.validation = params['validation']
-        self.testing = params['testing']
         self.evaluation = params['evaluation']
         self.options_list = params['options_list']
         self.days = params.get('days', 0)
@@ -40,6 +40,9 @@ class NeuralNetworkData(Data):
         return get_data_part(part['symbols'], self.options_list, part['start'],
                              part['end'], self.days, self.tolerance)
 
+    def get_shape(self):
+        return self.get_data()[DATA_PARTS[0]][0].shape[1]
+
 
 def read_preprocess_part(path):
     data = read_pickle(path)
@@ -64,23 +67,40 @@ def write_preprocess(folder, data):
     [write_data_part(folder, data, p) for p in DATA_PARTS]
 
 
+def get_symbol_part(symbol, options_list, start, end, days, tolerance):
+    symbol_data = SymbolData(symbol=symbol, options_list=options_list).get_data()
+    trades = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
+    data_in, data_out = filter_matching(symbol_data, trades)
+    data_in = add_prior_days(data_in, days, symbol_data)
+    try:
+        new_in = json_to_matrix(data_in)
+        new_out = json_to_matrix(data_out)
+    except:
+        print(symbol, options_list)  # TODO fix
+        raise Exception
+    if 0 in new_in.shape:
+        print(symbol, options_list)  # TODO fix
+        # try again
+        return get_symbol_part(symbol, options_list, start, end, days, tolerance)
+    return new_in, new_out
+
+
 def get_data_part(symbols, options_list, start, end, days, tolerance):
     matrix_in = None
     matrix_out = None
     for symbol in symbols:
-        symbol_data = SymbolData(symbol=symbol, options_list=options_list).get_data()
         try:
-            trades = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
+            new_in, new_out = get_symbol_part(symbol, options_list, start, end, days, tolerance)
         except DataException:
-            trades = {}
-        data_in, data_out = filter_incomplete(symbol_data, trades)
-        data_in = add_prior_days(data_in, days, symbol_data)
-        new_in = json_to_matrix(data_in)
-        new_out = json_to_matrix(data_out)
+            continue
         if matrix_in is None:
             matrix_in = new_in
             matrix_out = new_out
         else:
+            if len(new_in.shape) != 2:
+                print(matrix_in.shape, new_in.shape, symbol)  # TODO fix
+                print(matrix_out.shape, new_out.shape)
+                raise Exception
             matrix_in = np.concatenate((matrix_in, new_in))
             matrix_out = np.concatenate((matrix_out, new_out))
     return matrix_in, matrix_out
@@ -107,7 +127,7 @@ def add_prior_days(data, days, full_data):
 def validate_parts(parts):
     [validate_part(p) for p in parts]
     if False in [len(parts[0]['symbols']) == len(p['symbols']) for p in parts[1:]]:
-        raise Exception('A neural network must be trained, validated, tested, '
+        raise Exception('A neural network must be trained, validated, '
                         'and evaluated on the same number of symbols')
 
 
@@ -127,14 +147,12 @@ def get_part_order(args):
             order += ['training']
         if s.find('validation') > -1:
             order += ['validation']
-        if s.find('testing') > -1:
-            order += ['testing']
         if s.find('evaluation') > -1:
             order += ['evaluation']
     return remove_duplicates(order)
 
 
-def make_parts(training_symbols, validation_symbols, testing_symbols, evaluation_symbols, start, end):
+def make_parts(training_symbols, validation_symbols, evaluation_symbols, start, end):
     return {
         'training': {
             'symbols': training_symbols,
@@ -146,15 +164,10 @@ def make_parts(training_symbols, validation_symbols, testing_symbols, evaluation
             'start': start[1],
             'end': end[1]
         },
-        'testing': {
-            'symbols': testing_symbols,
-            'start': start[2],
-            'end': end[2]
-        },
         'evaluation': {
             'symbols': evaluation_symbols,
-            'start': start[3],
-            'end': end[3]
+            'start': start[2],
+            'end': end[2]
         }
     }
 
@@ -162,19 +175,18 @@ def make_parts(training_symbols, validation_symbols, testing_symbols, evaluation
 def get_parts(part_order, args):
     start = get_order_specific(args.start, part_order)
     end = get_order_specific(args.end, part_order)
-    return make_parts(args.training_symbols, args.validation_symbols, args.testing_symbols,
+    return make_parts(args.training_symbols, args.validation_symbols,
                       args.evaluation_symbols, start, end)
 
 
 def get_order_specific(l, order):
     if not len(l):
-        return [None] * 4
+        return [None] * NUM_PARTS
     elif len(l) == 1:
-        return [l[0]] * 4
-    elif len(l) == 4:
+        return [l[0]] * NUM_PARTS
+    elif len(l) == NUM_PARTS:
         return (l[order.index('training')],
                 l[order.index('validation')],
-                l[order.index('testing')],
                 l[order.index('evaluation')])
     else:
         raise Exception
@@ -184,19 +196,17 @@ def stratify_parts(symbols, percentages, start, end):
     start = to_date(start or '2002-01-01')
     end = to_date(end or Date.today().strftime('%Y-%m-%d'))
     duration = end - start
-    starts = [None] * 4
-    ends = [None] * 4
+    starts = [None] * NUM_PARTS
+    ends = [None] * NUM_PARTS
     starts[0] = start
     starts[1] = starts[0] + duration * percentages[0]
     starts[2] = starts[1] + duration * percentages[1]
-    starts[3] = starts[2] + duration * percentages[2]
     ends[0] = starts[1]
     ends[1] = starts[2]
-    ends[2] = starts[3]
-    ends[3] = end
+    ends[2] = end
     starts = [d.strftime('%Y-%m-%d') for d in starts]
     ends = [d.strftime('%Y-%m-%d') for d in ends]
-    return make_parts(symbols, symbols, symbols, symbols, starts, ends)
+    return make_parts(symbols, symbols, symbols, starts, ends)
 
 
 class SymbolAction(Action):
@@ -208,7 +218,7 @@ class SymbolAction(Action):
 def add_args(parser):
     parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
     parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
-    parser.add_argument('--percentages', type=float, nargs='+', default=[0.25, 0.25, 0.25, 0.25],
+    parser.add_argument('--percentages', type=float, nargs='+', default=[0.5, 0.25, 0.25],
                         help='relative size of each data part')
     parser.add_argument('--training_symbols', type=str, nargs='+', action=SymbolAction,
                         help='symbol(s) to train with')
@@ -218,10 +228,6 @@ def add_args(parser):
                         help='symbol(s) to validate with', action=SymbolAction)
     parser.add_argument('--validation_screener', type=str, action=SymbolAction,
                         help='name of Yahoo screener to validate with')
-    parser.add_argument('--testing_symbols', type=str, nargs='+', action=SymbolAction,
-                        help='symbol(s) to test with')
-    parser.add_argument('--testing_screener', type=str, action=SymbolAction,
-                        help='name of Yahoo screener to test with')
     parser.add_argument('--evaluation_symbols', type=str, nargs='+', action=SymbolAction,
                         help='symbol(s) to evaluate with')
     parser.add_argument('--evaluation_screener', type=str, action=SymbolAction,
@@ -244,16 +250,14 @@ def handle_symbols(args, parser):
     if not ((args.symbols or args.screener)
             or ((args.training_symbols or args.training_screener)
                 and (args.validation_symbols or args.validation_screener)
-                and (args.testing_symbols or args.testing_screener)
                 and (args.evaluation_symbols or args.evaluation_screener))):
         parser.error('(-s/--symbols or -y/--screener) or '
                      '((--training_symbols or --training_screener) and '
                      '(--validation_symbols or --validation_screener) and '
-                     '(--testing_symbols or --testing_screener) and'
                      '(--evaluation_symbols or --evaluation_screener)) is required')
     if args.symbols or args.screener:
-        if len(args.percentages) != 4:
-            parser.error('Exactly 4 --percentages required')
+        if len(args.percentages) != NUM_PARTS:
+            parser.error('Exactly %s --percentages required' % NUM_PARTS)
         elif not (0.9999 < sum(args.percentages) < 1.0001):
             parser.error('--percentages must sum to 1')
         else:
@@ -275,14 +279,13 @@ def handle_dates(args, parser):
 def handle_parts(args, parser):
     if not args.symbols:
         args.training_symbols = get_symbols(args.training_symbols, args.training_screener, args.limit)
-        args.evaluation_symbols = get_symbols(args.evaluation_symbols, args.evaluation_screener, args.limit)
-        args.testing_symbols = get_symbols(args.testing_symbols, args.testing_screener, args.limit)
+        args.validation_symbols = get_symbols(args.validation_symbols, args.validation_screener, args.limit)
         args.evaluation_symbols = get_symbols(args.evaluation_symbols, args.evaluation_screener, args.limit)
         part_order = get_part_order(args)
         try:
             args.parts = get_parts(part_order, args)
         except:
-            parser.error('Either 0, 1, or 4 --start and --end is required')
+            parser.error('Either 0, 1, or %s --start and --end is required' % NUM_PARTS)
 
 
 def handle_args(args, parser):
