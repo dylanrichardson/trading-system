@@ -130,7 +130,7 @@ def should_buy_first(prices, tolerance):
 def get_optimal_trades_dict(symbols, start, end, tolerance):
     trades = {}
     for symbol in symbols:
-        trades[symbol] = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
+        trades[symbol] = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance)
     return trades
 
 
@@ -147,7 +147,7 @@ def handle_args(args, parser):
 def main():
     args = parse_args('Load optimal trades.', add_args, handle_args)
     data = get_optimal_trades_dict(args.symbols, args.start, args.end, args.tolerance)
-    log(data, force=args.print)
+    [log(k, v.get_data(), force=args.print) for k, v in data.items()]
     if args.path:
         [log(k, v.get_path(), force=args.print) for k, v in data.items()]
 

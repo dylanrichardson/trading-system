@@ -298,8 +298,8 @@ def handle_args(args, parser):
 def main():
     args = parse_args('Preprocess neural network data.', add_args, handle_args)
     data = NeuralNetworkData(**args.parts, options_list=args.options_list, days=args.days,
-                             tolerance=args.tolerance).get_data()
-    log(data, force=args.print)
+                             tolerance=args.tolerance)
+    log(data.get_data(), force=args.print)
     if args.path:
         log(data.get_path(), force=args.print)
 

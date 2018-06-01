@@ -141,8 +141,8 @@ def main():
     args = parse_args('Create a neural network.', add_args, handle_args)
     data = NeuralNetwork(**args.parts, options_list=args.options_list, days=args.days,
                          tolerance=args.tolerance, epochs=args.epochs, nodes=args.nodes,
-                         activation=args.activation, loss=args.loss).get_data()
-    log(data, force=args.print)
+                         activation=args.activation, loss=args.loss)
+    log(data.get_data(), force=args.print)
     if args.path:
         log(data.get_path(), force=args.print)
 
