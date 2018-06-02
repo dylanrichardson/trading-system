@@ -103,11 +103,11 @@ def graph_optimal_trades(symbol, start, end, tolerance):
     return fig
 
 
-def get_symbol_data_graphs(symbols, options_indices, start, end):
-    options_list = get_options_list(options_indices)
+def get_symbol_data_graphs(symbols, options_list, start, end):
     graphs = {}
+    log(end)
     for symbol in symbols:
-        graphs[symbol] = SymbolDataGraph(symbol=symbol, option_list=options_list,
+        graphs[symbol] = SymbolDataGraph(symbol=symbol, options_list=options_list,
                                          start=start, end=end).get_figure()
     return graphs
 
@@ -121,18 +121,18 @@ def get_optimal_trades_graphs(symbols, start, end, tolerance):
 
 
 def add_args(parser):
-    parser.add_argument('data', type=str, action='append', choices=['data', 'optimal', 'neural'],
+    parser.add_argument('data', type=str, choices=['data', 'optimal', 'neural'],
                         help='data to graph')
     neural.add_args(parser)
 
 
 def handle_args(args, parser):
-    if args.data == 'optimal':
-        optimal.handle_args(args, parser)
-    if args.data == 'data':
-        symbol.handle_args(args, parser)
     if args.data == 'neural':
         neural.handle_args(args, parser)
+    elif args.data == 'optimal':
+        optimal.handle_args(args, parser)
+    elif args.data == 'data':
+        symbol.handle_args(args, parser)
 
 
 def get_neural_network_graph():
@@ -143,7 +143,7 @@ def main():
     args = parse_args('Load a graph.', add_args, handle_args)
     data = []
     if args.data == 'data':
-        data += get_symbol_data_graphs(args.symbols, args.options, args.start, args.end)
+        data += get_symbol_data_graphs(args.symbols, args.options_list, args.start, args.end)
     if args.data == 'optimal':
         data += get_optimal_trades_graphs(args.symbols, args.start, args.end, args.tolerance)
     if args.data == 'neural':

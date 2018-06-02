@@ -1,6 +1,7 @@
 from argparse import Action
 from data import Data, DataException
 from symbol import SymbolData, handle_options_args
+import symbol
 from optimal import OptimalTrades
 from utility import *
 
@@ -216,8 +217,7 @@ class SymbolAction(Action):
 
 
 def add_args(parser):
-    parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
-    parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
+    symbol.add_args(parser)
     parser.add_argument('--percentages', type=float, nargs='+', default=[0.5, 0.25, 0.25],
                         help='relative size of each data part')
     parser.add_argument('--training_symbols', type=str, nargs='+', action=SymbolAction,
@@ -232,14 +232,6 @@ def add_args(parser):
                         help='symbol(s) to evaluate with')
     parser.add_argument('--evaluation_screener', type=str, action=SymbolAction,
                         help='name of Yahoo screener to evaluate with')
-    parser.add_argument('-l', '--limit', type=int,
-                        help='take the first l symbols')
-    parser.add_argument('--start', type=str, action='append', default=[],
-                        help='start date of data')
-    parser.add_argument('--end', type=str, action='append', default=[],
-                        help='end date of data')
-    parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
-                        help='indices of data_options in params.py to use')
     parser.add_argument('-t', '--tolerance', type=float, default=0.01,
                         help='tolerance to use in optimal trades algorithm')
     parser.add_argument('-d', '--days', type=int, default=0,
@@ -293,6 +285,7 @@ def handle_args(args, parser):
     handle_symbols(args, parser)
     handle_parts(args, parser)
     handle_options_args(args, parser)
+    log(';', args.start, args.end)
 
 
 def main():

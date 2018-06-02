@@ -228,3 +228,7 @@ def get_options(options_str):
 
 def get_options_list(options_strs):
     return [get_options(options_str) for options_str in options_strs]
+
+
+def first(l):
+    return l[0] if len(l) else None

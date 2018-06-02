@@ -211,9 +211,12 @@ def filter_data(data, options_list, start, end):
 def add_symbol_args(parser):
     parser.add_argument('-s', '--symbols', type=str, nargs='+', help='symbol(s)')
     parser.add_argument('-y', '--screener', type=str, help='name of Yahoo screener')
-    parser.add_argument('-l', '--limit', type=int, help='take the first l symbols')
-    parser.add_argument('--start', type=str, help='start date of data')
-    parser.add_argument('--end', type=str, help='end date of data')
+    parser.add_argument('-l', '--limit', type=int,
+                        help='take the first l symbols')
+    parser.add_argument('--start', type=str, action='append', default=[],
+                        help='start date of data')
+    parser.add_argument('--end', type=str, action='append', default=[],
+                        help='end date of data')
 
 
 def add_args(parser):
@@ -229,13 +232,19 @@ def handle_symbol_args(args, parser):
     args.symbols = get_symbols(args.symbols, args.screener, args.limit)
 
 
-def handle_options_args(args, parser):
+def handle_options_args(args):
     args.options_list = get_options_list(args.options)
+
+
+def handle_dates(args):
+        args.start = first(args.start)
+        args.end = first(args.end)
 
 
 def handle_args(args, parser):
     handle_symbol_args(args, parser)
-    handle_options_args(args, parser)
+    handle_options_args(args)
+    handle_dates(args)
 
 
 def main():
