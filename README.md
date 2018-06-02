@@ -43,6 +43,7 @@ python tests.py
 
 ### graph.py
 
+```
 usage: graph.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                 [--percentages PERCENTAGES [PERCENTAGES ...]]
                 [--training_symbols TRAINING_SYMBOLS [TRAINING_SYMBOLS ...]]
@@ -55,6 +56,7 @@ usage: graph.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                 [-t TOLERANCE] [-d DAYS] [-e EPOCHS] [-n NODES] [-a {tanh}]
                 [--loss {mean_squared_error}] [-p] [-v] [--path]
                 {data,optimal,neural}
+```
 
 
 ### neural.py
