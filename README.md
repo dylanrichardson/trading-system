@@ -59,6 +59,7 @@ usage: graph.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
 
 ### neural.py
 
+```
 usage: neural.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                  [--percentages PERCENTAGES [PERCENTAGES ...]]
                  [--training_symbols TRAINING_SYMBOLS [TRAINING_SYMBOLS ...]]
@@ -70,17 +71,21 @@ usage: neural.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                  [--start START] [--end END] -o OPTIONS [OPTIONS ...]
                  [-t TOLERANCE] [-d DAYS] [-e EPOCHS] [-n NODES] [-a{tanh}]
                  [--loss {mean_squared_error}] [-p] [-v] [--path]
+```
 
 
 ### optimal.py
 
+```
 usage: optimal.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER] [-l LIMIT]
                   [--start START] [--end END] [-t TOLERANCE] [-p] [-v]
                   [--path]
+```
 
 
 ### preprocess.py
 
+```
 usage: preprocess.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                      [--percentages PERCENTAGES [PERCENTAGES ...]]
                      [--training_symbols TRAINING_SYMBOLS [TRAINING_SYMBOLS ...]]
@@ -91,16 +96,21 @@ usage: preprocess.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                      [--evaluation_screener EVALUATION_SCREENER] [-lLIMIT]
                      [--start START] [--end END] -o OPTIONS [OPTIONS...]
                      [-t TOLERANCE] [-d DAYS] [-p] [-v] [--path]
+```
 
 
 ### screener.py
 
+```
 usage: screener.py [-h] [-l LIMIT] [-p] [-v] [--path] screener
+```
 
 
 ### symbol.py
 
+```
 usage: symbol.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER] [-l LIMIT]
                  [--start START] [--end END] -o OPTIONS [OPTIONS ...] [-r]
                  [-p] [-v] [--path]
+```
 
