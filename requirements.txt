@@ -17,6 +17,7 @@ pycrypto==2.6.1
 pydub==0.20.0
 pyparsing==2.2.0
 pyquery==1.4.0
+pyre-check==0.0.7
 python-dateutil==2.6.1
 python-dotenv==0.7.1
 python-magic==0.4.15
