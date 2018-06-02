@@ -232,19 +232,19 @@ def handle_symbol_args(args, parser):
     args.symbols = get_symbols(args.symbols, args.screener, args.limit)
 
 
-def handle_options_args(args):
+def handle_options_args(args, parser):
     args.options_list = get_options_list(args.options)
 
 
-def handle_dates(args):
+def handle_dates(args, parser):
         args.start = first(args.start)
         args.end = first(args.end)
 
 
 def handle_args(args, parser):
     handle_symbol_args(args, parser)
-    handle_options_args(args)
-    handle_dates(args)
+    handle_options_args(args, parser)
+    handle_dates(args, parser)
 
 
 def main():

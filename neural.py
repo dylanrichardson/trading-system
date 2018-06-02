@@ -101,12 +101,9 @@ def train_neural_network(folder):
     model_path = os.path.join(folder, 'model.yml')
     log_path = os.path.join(folder, 'log')
     output_path = os.path.join(folder, 'output.pkl')
-    if PARAMS['verbose']:
-        std_out = []
-    else:
-        std_out = ['>', 'out']
-    call(['kur', 'train', model_path] + std_out)
-    call(['kur', 'evaluate', model_path] + std_out)
+    std_out = None if PARAMS['verbose'] else 'out'
+    call(['kur', 'train', model_path], stdout=stdout)
+    call(['kur', 'evaluate', model_path], stdout=stdout)
     output = read_pickle(output_path)
     return {
         'training_loss': get_loss(log_path, 'training_loss_total'),
