@@ -106,6 +106,11 @@ optional arguments:
 
 ```
 
+Example 
+```
+python graph.py data -s AAPL -o sma --start 2018-01-01 --end 2018-02-01 -p
+```
+
 
 ### neural.py
 
@@ -166,6 +171,11 @@ optional arguments:
   --path                print the data path
 ```
 
+Example
+```
+python neural.py -s AAPL -o sma --start 2018-01-01 --end 2018-02-01
+```
+
 
 ### optimal.py
 
@@ -193,9 +203,15 @@ optional arguments:
   --path                print the data path
 ```
 
+Example
+```
+python optimal.py -s AAPL
+```
+
 
 ### preprocess.py
 
+Usage
 ```
 usage: preprocess.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                      [--percentages PERCENTAGES [PERCENTAGES ...]]
@@ -244,9 +260,15 @@ optional arguments:
   --path                print the data path
 ```
 
+Example
+```
+python preprocess.py -s AAPL -o sma --start 2018-01-01 --end 2018-02-01
+```
+
 
 ### screener.py
 
+Usage
 ```
 usage: screener.py [-h] [-l LIMIT] [-p] [-v] [--path] screener
 
@@ -265,9 +287,15 @@ optional arguments:
 
 ```
 
+Example
+```
+python screener.py -l 10
+```
+
 
 ### symbol.py
 
+Usage
 ```
 usage: symbol.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER] [-l LIMIT]
                  [--start START] [--end END] -o OPTIONS [OPTIONS ...] [-r]
@@ -294,3 +322,23 @@ optional arguments:
 
 ```
 
+| Indicators                                     |
+| ---------------------------------------------- |
+| daily()                                        |
+| daily_adj()                                    |
+| sma(period=30)                                 |
+| ema(period=20)                                 |
+| macd(fast=12, slow=26, signal=9)               |
+| stoch(fastk=5, slowk=3, slowd=3, kma=0, dma=0) |
+| rsi(period=14)                                 |
+| adx(period=14)                                 |
+| cci(period=14)                                 |
+| aroon(period=14)                               |
+| bbands(period=14, ndev=2, ma=0)                |
+| ad()                                           |
+| obv()                                          |
+
+Example
+```
+python symbol.py -s AAPL -o sma
+```
