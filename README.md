@@ -1,8 +1,8 @@
 # trading-system
+
 Automatic trading system using machine learning
 
 ## Setup
-
 
 ### Clone
 
@@ -10,19 +10,19 @@ Automatic trading system using machine learning
 git clone git@github.com:drich14/trading-system.git
 ```
 
-
 ### PyEnv (optional)
 
 Activate
+
 ```
 pyenv activate venv
 ```
 
 Deactivate
+
 ```
 pyenv deactivate
 ```
-
 
 ### Install dependencies
 
@@ -30,6 +30,11 @@ pyenv deactivate
 pip install -r requirements.txt
 ```
 
+### Save new dependencies
+
+```
+pip freeze > requirements.txt
+```
 
 ### Run tests
 
@@ -37,9 +42,7 @@ pip install -r requirements.txt
 python tests.py
 ```
 
-
 ## Programs
-
 
 ### graph.py
 
@@ -103,14 +106,13 @@ optional arguments:
   -p, --print           print the data
   -v, --verbose         enable logging
   --path                print the data path
-
 ```
 
-Example 
+Example
+
 ```
 python graph.py data -s AAPL -o sma --start 2018-01-01 --end 2018-02-01 -p
 ```
-
 
 ### neural.py
 
@@ -172,10 +174,10 @@ optional arguments:
 ```
 
 Example
+
 ```
 python neural.py -s AAPL -o sma --start 2018-01-01 --end 2018-02-01
 ```
-
 
 ### optimal.py
 
@@ -204,14 +206,15 @@ optional arguments:
 ```
 
 Example
+
 ```
 python optimal.py -s AAPL
 ```
 
-
 ### preprocess.py
 
 Usage
+
 ```
 usage: preprocess.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER]
                      [--percentages PERCENTAGES [PERCENTAGES ...]]
@@ -261,14 +264,15 @@ optional arguments:
 ```
 
 Example
+
 ```
 python preprocess.py -s AAPL -o sma --start 2018-01-01 --end 2018-02-01
 ```
 
-
 ### screener.py
 
 Usage
+
 ```
 usage: screener.py [-h] [-l LIMIT] [-p] [-v] [--path] screener
 
@@ -284,18 +288,18 @@ optional arguments:
   -p, --print           print the data
   -v, --verbose         enable logging
   --path                print the data path
-
 ```
 
 Example
+
 ```
 python screener.py -l 10
 ```
 
-
 ### symbol.py
 
 Usage
+
 ```
 usage: symbol.py [-h] [-s SYMBOLS [SYMBOLS ...]] [-y SCREENER] [-l LIMIT]
                  [--start START] [--end END] -o OPTIONS [OPTIONS ...] [-r]
@@ -319,7 +323,6 @@ optional arguments:
   -p, --print           print the data
   -v, --verbose         enable logging
   --path                print the data path
-
 ```
 
 | Indicators                                     |
@@ -339,6 +342,7 @@ optional arguments:
 | obv()                                          |
 
 Example
+
 ```
 python symbol.py -s AAPL -o sma
 ```
