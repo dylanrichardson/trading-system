@@ -4,7 +4,7 @@ from kur.loggers import BinaryLogger
 from kur import Kurfile
 from kur.engine import JinjaEngine
 from kur.utils import DisableLogging
-
+from sys import stdout
 import preprocess
 from analysis import get_accuracy, get_average_distance
 from utility import *
@@ -54,9 +54,9 @@ class NeuralNetwork(Data):
 
     def get_part_data(self):
         if not self.part_data:
-            self.part_data = preprocess.NeuralNetworkData(training=self.training, validation=self.validation,
-                                                          evaluation=self.evaluation, options_list=self.options_list,
-                                                          days=self.days, tolerance=self.tolerance)
+            self.part_data = preprocess.NeuralNetworkData(training=self.training,
+                validation=self.validation, evaluation=self.evaluation,
+                options_list=self.options_list, days=self.days, tolerance=self.tolerance)
         return self.part_data
 
     def get_model(self):

@@ -105,6 +105,7 @@ venv.bak/
 
 # Data
 data/
+test_data/
 
 # Other
 man/

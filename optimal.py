@@ -1,7 +1,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 from data import Data
 from utility import *
-from symbol import SymbolCloseData, add_symbol_args, handle_symbol_args
+from symbol import SymbolCloseData, add_symbol_args, handle_symbol_args, handle_date_args
 
 BUY = 1
 SELL = -1
@@ -18,7 +18,10 @@ class OptimalTrades(Data):
 
     def get_new_data(self):
         log('Calculating optimal trades...')
-        return get_optimal_trades(self.symbol, self.start, self.end, self.tolerance)
+        trades = get_optimal_trades(self.symbol, self.start, self.end, self.tolerance)
+        if trades == {}:
+            raise Exception('Could not calculate optimal trades. Try increasing the period or decreasing the tolerance.')
+        return trades
 
     def get_folder(self):
         return 'optimal'
@@ -142,6 +145,7 @@ def add_args(parser):
 
 def handle_args(args, parser):
     handle_symbol_args(args, parser)
+    handle_date_args(args, parser)
 
 
 def main():

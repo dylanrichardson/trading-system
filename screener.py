@@ -15,6 +15,13 @@ def yahoo(screener):
     return [a.text for a in elements]
 
 
+def get_symbols(symbols, screener, limit):
+    symbols = symbols or []
+    if screener:
+        symbols += yahoo(screener)
+    return symbols[:limit]
+
+
 # AAII screener 'table > tbody > tr:nth-child(2n+1) > td:nth-child(2) > a'
 # needs authentication
 

@@ -8,12 +8,15 @@ from datetime import datetime, timedelta, date as Date
 import numpy as np
 from binascii import hexlify, unhexlify
 import os
+import csv
 from Crypto.Cipher import AES
 from params import PARAMS
-from screener import yahoo
 
 DATE_LENGTH = 10
+DT_FORMAT = '%Y-%m-%d'
 CRYPT_KEY = '1234567890123456'
+API_KEY = PARAMS['credentials']['alphavantage']
+DAILY_OPTIONS = PARAMS['data_options']['daily']()
 
 
 def log(*args, force=False, **kwargs):
@@ -138,10 +141,12 @@ def encrypt_options_list(options_list):
     return [column for options in options_list for column in encrypt_options(options)]
 
 
+def get_daily_crypt():
+    return dict(encrypt_options(PARAMS['data_options']['daily']()))
+
+
 def get_close_crypt():
-    daily_options = PARAMS['data_options']['daily']()
-    daily_crypt = encrypt_options(daily_options)
-    return [col for col in daily_crypt if 'close' in col][0][1]
+    return get_daily_crypt()['close']
 
 
 def filter_columns(keep, data):
@@ -160,11 +165,15 @@ def extract_column(column, data):
 def get_latest_weekday():
     today = Date.today()
     latest_day = today - timedelta(max(4, today.weekday()) - 4)
-    return latest_day.strftime('%Y-%m-%d')
+    return from_date(latest_day)
 
 
 def to_date(date):
-    return datetime.strptime(date, '%Y-%m-%d')
+    return datetime.strptime(date, DT_FORMAT)
+
+
+def from_date(date):
+    return date.strftime(DT_FORMAT)
 
 
 # inclusive
@@ -187,11 +196,21 @@ def filter_close(data):
 
 
 def get_columns(data):
+    cols = set()
     for date in data.keys():
         if len(date) == DATE_LENGTH:
-            return list(data[date].keys())
-    return []
+            cols.update(data[date].keys())
+    return list(cols)
 
+
+def get_csv_headers(path):
+    try:
+        with open(path, 'r') as csv_file:
+            reader = csv.reader(csv_file)
+            headers = next(reader)
+            return headers
+    except FileNotFoundError:
+        return []
 
 def dicts_to_xys(dicts):
     keys = set()
@@ -208,13 +227,6 @@ def dicts_to_xys(dicts):
                 y.append(d[v])
         xys.append((x, y))
     return xys
-
-
-def get_symbols(symbols, screener, limit):
-    symbols = symbols or []
-    if screener:
-        symbols += yahoo(screener)
-    return symbols[:limit]
 
 
 def get_options(options_str):

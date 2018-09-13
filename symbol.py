@@ -4,10 +4,7 @@ import requests
 import csv
 from data import Data
 from utility import *
-from params import PARAMS
-
-API_KEY = PARAMS['credentials']['alphavantage']
-DAILY_OPTIONS = PARAMS['data_options']['daily']()
+from screener import get_symbols
 
 
 class SymbolData(Data):
@@ -87,6 +84,8 @@ def download_symbol_datum(symbol, options):
         'symbol': symbol,
         'apikey': API_KEY
     }, **options})
+    if type(data) is str:
+        raise Exception(data)
     data = sanitize_data(data)
     data = convert_data(data, options)
     return data
@@ -221,7 +220,7 @@ def add_symbol_args(parser):
 
 def add_args(parser):
     add_symbol_args(parser)
-    parser.add_argument('-o', '--options', type=str, nargs='+', required=True,
+    parser.add_argument('-o', '--options', type=str, nargs='+',
                         help='indices of data_options in params.py')
     parser.add_argument('-r', '--refresh', action='store_true', help='refresh the data')
 
@@ -236,7 +235,7 @@ def handle_options_args(args, parser):
     args.options_list = get_options_list(args.options)
 
 
-def handle_dates(args, parser):
+def handle_date_args(args, parser):
         args.start = first(args.start)
         args.end = first(args.end)
 
@@ -244,7 +243,7 @@ def handle_dates(args, parser):
 def handle_args(args, parser):
     handle_symbol_args(args, parser)
     handle_options_args(args, parser)
-    handle_dates(args, parser)
+    handle_date_args(args, parser)
 
 
 def main():

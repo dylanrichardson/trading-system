@@ -23,11 +23,11 @@ class Data:
 
     def get_data(self):
         try:
-            if not self.data:
+            if self.data is None:
                 self.data = self.read_data()
-                if not self.data:
+                if self.data is None:
                     self.data = self.get_new_data()
-                    if not self.data:
+                    if self.data is None:
                         raise DataException(self.data_error_msg())
                     self.write_data()
             return self.data

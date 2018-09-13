@@ -4,6 +4,7 @@ from symbol import SymbolData, handle_options_args
 import symbol
 from optimal import OptimalTrades
 from utility import *
+from screener import get_symbols
 
 DATA_PARTS = ['training', 'validation', 'evaluation']
 NUM_PARTS = len(DATA_PARTS)
@@ -73,16 +74,8 @@ def get_symbol_part(symbol, options_list, start, end, days, tolerance):
     trades = OptimalTrades(symbol=symbol, start=start, end=end, tolerance=tolerance).get_data()
     data_in, data_out = filter_matching(symbol_data, trades)
     data_in = add_prior_days(data_in, days, symbol_data)
-    try:
-        new_in = json_to_matrix(data_in)
-        new_out = json_to_matrix(data_out)
-    except:
-        print(symbol, options_list)  # TODO fix
-        raise Exception
-    if 0 in new_in.shape:
-        print(symbol, options_list)  # TODO fix
-        # try again
-        return get_symbol_part(symbol, options_list, start, end, days, tolerance)
+    new_in = json_to_matrix(data_in)
+    new_out = json_to_matrix(data_out)
     return new_in, new_out
 
 
@@ -90,23 +83,17 @@ def get_data_part(symbols, options_list, start, end, days, tolerance):
     matrix_in = None
     matrix_out = None
     for symbol in symbols:
-        try:
-            new_in, new_out = get_symbol_part(symbol, options_list, start, end, days, tolerance)
-        except DataException:
-            continue
+        new_in, new_out = get_symbol_part(symbol, options_list, start, end, days, tolerance)
         if matrix_in is None:
             matrix_in = new_in
             matrix_out = new_out
         else:
-            if len(new_in.shape) != 2:
-                print(matrix_in.shape, new_in.shape, symbol)  # TODO fix
-                print(matrix_out.shape, new_out.shape)
-                raise Exception
             matrix_in = np.concatenate((matrix_in, new_in))
             matrix_out = np.concatenate((matrix_out, new_out))
     return matrix_in, matrix_out
 
 
+# add data from prior days to the data for the current date
 def add_prior_days(data, days, full_data):
     if not data:
         return data

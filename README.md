@@ -10,6 +10,14 @@ Automatic trading system using machine learning
 git clone git@github.com:drich14/trading-system.git
 ```
 
+### Secrets
+
+```
+export alphavantage_key=<API_KEY>
+export intrinio_username=<USERNAME>
+export intrinio_password=<PASSWORD>
+```
+
 ### PyEnv (optional)
 
 Activate

@@ -6,6 +6,7 @@ from optimal import *
 from preprocess import NeuralNetworkData, stratify_parts
 from graph import OptimalTradesGraph
 from screener import yahoo
+from strategy import Strategy
 
 
 class TestOptimal(unittest.TestCase):
@@ -122,12 +123,7 @@ class TestAllData(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        PARAMS['data_folder'] = 'test'
-        remove_folder('test')
-
-    @classmethod
-    def tearDownClass(cls):
-        remove_folder('test')
+        PARAMS['data_folder'] = 'test_data'
 
     def test_symbol_data1(self):
         log('\n\nTesting symbol data...\n\n')
@@ -135,12 +131,6 @@ class TestAllData(unittest.TestCase):
 
     def test_symbol_data2(self):
         SymbolData(symbol='AAPL', options_list=get_options_list(['macd', 'ema']))
-
-    def test_symbol_data3(self):
-        data = SymbolData(symbol='AAPL', options_list=get_options_list(['sma']))
-        log('refreshing data...')
-        remove_last_line(data.get_symbol_path())
-        SymbolData(symbol='AAPL', options_list=get_options_list(['sma', 'ema'])).refresh_data(update_old=True)
 
     def test_screener(self):
         log('\n\nTesting Yahoo screener...\n\n')
@@ -177,6 +167,19 @@ class TestAllData(unittest.TestCase):
     def test_neural2(self):
         NeuralNetwork(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.1, 0.3], '2017-01-01', '2018-01-01'),
                       options_list=get_options_list(['sma']), days=5, tolerance=0.05)
+
+    def test_strategy1(self):
+        neural = NeuralNetwork(**stratify_parts(['AAPL', 'MSFT'], [0.5, 0.1, 0.3], '2015-01-01',
+            '2018-01-01'), options_list=get_options_list(['sma', 'ema', 'macd']),
+            days=3, tolerance=0.05)
+        Strategy(neural=neural, start='2018-01-01', end='2018-03-01', symbol='AAPL')
+
+    def test_strategy2(self):
+        neural = NeuralNetwork(**stratify_parts(['AAPL', 'MSFT'], [0.25]*3, '2017-01-01',
+            '2018-01-01'), options_list=get_options_list(['sma', 'ema']),
+            days=7, tolerance=0.01)
+        Strategy(neural=neural, start='2018-04-01', end='2018-05-01', symbol='MSFT', 
+            threshold=0.7)
 
 
 if __name__ == '__main__':
