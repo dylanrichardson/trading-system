@@ -19,10 +19,11 @@ class Strategy(Data):
         self.start = params['start']
         self.end = params['end']
         self.symbol = params['symbol']
+        self.threshold = params.get('threshold', 0.8)
         self.options_list = self.neural.options_list
         self.days = self.neural.days
         super().__init__(neural=self.neural.params, start=self.start,
-                end=self.end, symbol=self.symbol)
+                end=self.end, symbol=self.symbol, threshold=self.threshold)
 
     def get_folder(self):
         return 'strategy'
@@ -43,7 +44,8 @@ class Strategy(Data):
         return strategy.get_results()
 
     def setup_input_data(self):
-        # download price and specified indicators
+        # download OHLCV and specified indicators
+        # OHLCV is used for backtesting stats, not as input to ANN
         SymbolData(symbol=self.symbol, options_list=[DAILY_OPTIONS], 
                 start=self.start, end=self.end)
         symbol_data = SymbolData(symbol=self.symbol, options_list=self.options_list,
@@ -83,11 +85,11 @@ class Strategy(Data):
         data_feed.addfilter(self.data_filter())
         return data_feed
 
-    def get_cebebro(self):
+    def get_cerebro(self):
         cerebro = bt.Cerebro()
         # add strategy based on given neural network
         cerebro.addstrategy(BTStrategy, symbol_data=self.input_data,
-                    neural=self.neural)
+                    neural=self.neural, threshold=self.threshold)
         data_feed = self.get_data_feed()
         cerebro.adddata(data_feed)
         # add drawdown observer
@@ -100,10 +102,10 @@ class Strategy(Data):
         return cerebro
 
     def backtest(self):
-        cerebro = self.get_cebebro()
+        cerebro = self.get_cerebro()
         # log(cerebro.broker.getvalue())
         strategy = cerebro.run()[0]
-        # log(cerebro.broker.getvalue())
+        log(cerebro.broker.getvalue())
         # cerebro.plot()
         return strategy
 
@@ -113,11 +115,10 @@ class BTStrategy(bt.Strategy):
     params = (
         ('symbol_data', None),
         ('neural', None),
-        ('threshold', 0.8)   
+        ('threshold', None)   
     )
 
     def __init__(self):
-        self.dataclose = self.datas[0].close
         self.symbol_data = self.params.symbol_data
         self.neural = self.params.neural
         self.threshold = self.params.threshold
@@ -125,10 +126,15 @@ class BTStrategy(bt.Strategy):
             raise Exception('A Backtrader strategy expects a symbol_data parameter')
         if not self.neural:
             raise Exception('A Backtrader strategy expects a neural parameter')
+        if not self.threshold:
+            raise Exception('A Backtrader strategy expects a threshold parameter')
         # keep track of pending orders
         self.order = None
         # keep track of trades
         self.trades = []
+
+    def get_close(self):
+        return self.datas[0].close[0]
 
     def get_date(self):
         return from_date(self.datas[0].datetime.date())
@@ -151,7 +157,8 @@ class BTStrategy(bt.Strategy):
                         'buy': True,
                         'price': order.executed.price,
                         'value': order.executed.value,
-                        'commission': order.executed.comm
+                        'commission': order.executed.comm,
+                        'size': order.executed.size
                     })
                     # log(self.get_date(), 'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
                     #     (order.executed.price,
@@ -170,6 +177,15 @@ class BTStrategy(bt.Strategy):
                     #       order.executed.value,
                     #       order.executed.comm))
 
+    def is_in_market(self):
+        return len(self.trades) % 2 > 0
+
+    def is_long(self):
+        return self.is_in_market() and self.trades[-1]['buy']
+
+    def is_short(self):
+        return self.is_in_market() and not self.trades[-1]['buy']
+
     def next(self):
         # check for pending order
         if self.order:
@@ -179,12 +195,12 @@ class BTStrategy(bt.Strategy):
         # use neural network
         prediction = self.neural.predict(input_data)
         # buy/sell based on neural network prediction and position in market
-        if prediction > self.threshold and not self.position:
+        if not self.is_long() and prediction > self.threshold:
             self.order = self.buy()
-            # log(self.get_date(), 'buy', (self.datas[0].close[0]))
-        elif prediction < -self.threshold and self.position:
+            # log(self.get_date(), 'buy', self.get_close())
+        elif not self.is_short() and prediction < -self.threshold:
             self.order = self.sell()
-            # log(self.get_date(), 'sell', (self.datas[0].close[0]))
+            # log(self.get_date(), 'sell', self.get_close())
 
     def get_results(self):
         return self.trades
