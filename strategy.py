@@ -105,8 +105,7 @@ class Strategy(Data):
         cerebro = self.get_cerebro()
         # log(cerebro.broker.getvalue())
         strategy = cerebro.run()[0]
-        log(cerebro.broker.getvalue())
-        # cerebro.plot()
+        # log(cerebro.broker.getvalue())
         return strategy
 
 
@@ -151,31 +150,15 @@ class BTStrategy(bt.Strategy):
         if order.status not in [order.Submitted, order.Accepted]:
             self.order = None
             if order.status == order.Completed:
-                if order.isbuy():
-                    self.trades.append({
-                        'date': self.get_date(),
-                        'buy': True,
-                        'price': order.executed.price,
-                        'value': order.executed.value,
-                        'commission': order.executed.comm,
-                        'size': order.executed.size
-                    })
-                    # log(self.get_date(), 'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                    #     (order.executed.price,
-                    #      order.executed.value,
-                    #      order.executed.comm))
-                else:
-                    self.trades.append({
-                        'date': self.get_date(),
-                        'buy': False,
-                        'price': order.executed.price,
-                        'value': order.executed.value,
-                        'commission': order.executed.comm
-                    })
-                    # log(self.get_date(), 'SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
-                    #      (order.executed.price,
-                    #       order.executed.value,
-                    #       order.executed.comm))
+                self.trades.append({
+                    'date': self.get_date(),
+                    'buy': order.isbuy(),
+                    'price': order.executed.price,
+                    'value': order.executed.value,
+                    'commission': order.executed.comm,
+                    'size': order.executed.size
+                })
+                
 
     def is_in_market(self):
         return len(self.trades) % 2 > 0
