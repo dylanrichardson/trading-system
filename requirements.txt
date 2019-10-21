@@ -29,4 +29,4 @@ six==1.11.0
 Theano==1.0.1
 tornado==4.5.3
 tqdm==4.19.5
-urllib3==1.22
+urllib3==1.24.2
